@@ -1,0 +1,23 @@
+# secrets and local state: never bake these into an image
+.env
+.env.*
+!.env.example
+ground_truth.json
+reviews.json
+submission.json
+.cache/
+
+# not needed to run the app
+.git
+.gitignore
+venv/
+.venv/
+__pycache__/
+*.pyc
+tests/
+tools/
+validation/
+*.patch
+Dockerfile
+docker-compose.yml
+.dockerignore
