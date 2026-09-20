@@ -48,6 +48,21 @@ confirms or corrects them, and the report updates. **Retry** re-runs one email, 
 4. Environment: add `GEMINI_API_KEY` and `GEMINI_MODEL` as secrets.
 5. Keep it to ONE worker: results are held in memory.
 
+### Run or deploy with Docker
+
+    docker compose up --build      # then open http://localhost:5000
+
+The image pins the exact library versions in `constraints.txt`, so it runs the same
+everywhere. The Gemini key is read from your shell or a `.env` next to `docker-compose.yml`
+and is passed in when the container starts, never copied into the image. With no key the
+app runs rules-only. Reviewer decisions are kept in a Docker volume across restarts.
+
+To deploy the same image, use **Render** (New -> Web Service -> Docker) or **Google Cloud Run**
+(`gcloud run deploy --source .`). Both set `PORT` themselves. Add `GEMINI_API_KEY` and
+`GEMINI_MODEL` in the host's environment settings, then redeploy after any change to them.
+On Cloud Run use `--max-instances 1` (results are held in memory, so a second instance would
+hold its own copy) and `--min-instances 1` to avoid a cold start.
+
 ## Score (optional)
 
     python tools/score_cli.py submission.json --ground-truth path/to/ground_truth.json
