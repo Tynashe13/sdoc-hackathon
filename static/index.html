@@ -156,6 +156,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .aibox svg.i{color:#af52de;margin-top:1px}
 .form{padding:4px 6px 4px}
 .form .vt-row{grid-template-columns:150px minmax(0,1fr) minmax(0,1fr)}
+.form .fld{display:block;min-width:0}
 .form input{width:100%;padding:7px 9px;border-radius:8px;border:.5px solid var(--sep);background:var(--card-solid);outline:0;min-width:0}
 .form input:focus{box-shadow:0 0 0 3px rgba(0,122,255,.28);border-color:var(--accent)}
 .form input.ai{background:linear-gradient(0deg,rgba(175,82,222,.08),rgba(175,82,222,.08)),var(--card-solid)}
@@ -180,8 +181,16 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 #toast{position:fixed;z-index:9;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;padding:10px 16px;border-radius:12px;background:rgba(30,30,34,.86);color:#fff;font-size:13px;pointer-events:none;transition:.25s;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 
-/* ---------- iPhone-style stack on small screens ---------- */
-@media (max-width:900px){
+/* ---------- smaller laptop windows: slimmer columns so the comparison table keeps its room ---------- */
+@media (max-width:1360px){
+  #app{grid-template-columns:200px 320px minmax(0,1fr)}
+  .reader-scroll{padding:22px 20px 40px}
+  .vt-row{grid-template-columns:120px minmax(0,1fr) minmax(0,1fr) 28px}
+  .form .vt-row{grid-template-columns:120px minmax(0,1fr) minmax(0,1fr)}
+}
+
+/* ---------- iPhone-style stack on phones and narrow windows ---------- */
+@media (max-width:1100px){
   body{background:var(--side)}
   #app{margin:0;width:100%;height:100dvh;border-radius:0;display:block;box-shadow:none}
   #sidebar,#list,#reader{position:absolute;inset:0;width:100%;border:0}
@@ -206,7 +215,10 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
   .vt-row .f{grid-column:1/-1}
   .vt-row .tag{display:block}
   .vt-head{display:none}
-  .form .vt-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .form .vt-row{grid-template-columns:minmax(0,1fr);row-gap:6px}   /* SI and BL inputs stack, each labelled */
+  .form .vt-head{display:none}
+  input,textarea{font-size:16px}                                   /* under 16px makes iPhone Safari zoom in */
+  .btn,.icon-btn,.nav{min-height:44px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -306,7 +318,13 @@ async function api(url, opt){
 }
 async function boot(){
   while(true){
-    const j = await api('/api/emails');
+    let j;
+    try{ j = await api('/api/emails'); }
+    catch(e){                                   // e.g. a free host that is still waking up
+      $('#boot h3').textContent = 'Waking the server…';
+      $('#bootMsg').textContent = 'A free host sleeps when idle and can take up to a minute to start. Trying again…';
+      await new Promise(r=>setTimeout(r,2500)); continue;
+    }
     if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
     if(j.ready){
       state.emails = j.emails; setAI(j.ai);
@@ -442,8 +460,8 @@ function reviewCard(d){
     <div class="form"><div class="vt-row vt-head colh"><span>Field</span>
       <span>Shipping Instruction<small>${esc(f.si_source)}</small></span><span>Draft Bill of Lading<small>${esc(f.bl_source)}</small></span></div>` +
     d.fields.map(k=>`<div class="vt-row"><span class="f">${FIELD[k]}</span>
-      <input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}">
-      <input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}"></div>`).join('') + `</div>`;
+      <label class="fld"><span class="tag">SI · ${esc(f.si_source)}</span><input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}"></label>
+      <label class="fld"><span class="tag">BL · ${esc(f.bl_source)}</span><input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}"></label></div>`).join('') + `</div>`;
   return `<div class="card">
     ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'')}
     ${ai?`<div class="aibox">${ico('spark')}<div>Gemini read the scan and suggested the highlighted values. It can misread small print, so please confirm each one against the page${ai.would_flag && ai.would_flag.length ? ` (it would flag: ${ai.would_flag.map(x=>FIELD[x]).join(', ')})`:''}.</div></div>`:''}
