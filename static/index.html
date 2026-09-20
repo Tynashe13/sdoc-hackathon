@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Shipping Mail · Document Verification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --accent:#007aff; --red:#ff3b30; --orange:#ff9500; --green:#30b455; --yellow:#ffcc00;
+  --text:#1d1d1f; --text2:rgba(60,60,67,.62); --text3:rgba(60,60,67,.32);
+  --sep:rgba(60,60,67,.13);
+  --side:rgba(238,238,243,.52); --list:rgba(255,255,255,.60); --read:rgba(255,255,255,.80);
+  --card:rgba(255,255,255,.72); --card-solid:#fff; --fill:rgba(120,120,128,.12); --fill2:rgba(120,120,128,.18);
+  --hover:rgba(0,0,0,.045);
+  --red-bg:rgba(255,59,48,.10); --green-bg:rgba(52,199,89,.12); --orange-bg:rgba(255,149,0,.13); --blue-bg:rgba(0,122,255,.10);
+  --shadow:0 32px 90px rgba(30,30,90,.28),0 0 0 .5px rgba(0,0,0,.20);
+  --wall:radial-gradient(55% 55% at 12% 18%,#ff9fd2 0,transparent 62%),radial-gradient(50% 50% at 88% 12%,#7cc4ff 0,transparent 62%),radial-gradient(60% 60% at 72% 92%,#b7a2ff 0,transparent 62%),radial-gradient(50% 50% at 8% 92%,#ffd591 0,transparent 62%),#dfe5f6;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --accent:#0a84ff; --red:#ff453a; --orange:#ff9f0a; --green:#32d74b;
+    --text:#f5f5f7; --text2:rgba(235,235,245,.6); --text3:rgba(235,235,245,.3); --sep:rgba(255,255,255,.12);
+    --side:rgba(38,38,44,.55); --list:rgba(30,30,34,.62); --read:rgba(28,28,32,.80);
+    --card:rgba(58,58,64,.55); --card-solid:#2c2c30; --fill:rgba(120,120,128,.24); --fill2:rgba(120,120,128,.34);
+    --hover:rgba(255,255,255,.06);
+    --red-bg:rgba(255,69,58,.18); --green-bg:rgba(50,215,75,.16); --orange-bg:rgba(255,159,10,.18); --blue-bg:rgba(10,132,255,.20);
+    --shadow:0 32px 90px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.18);
+    --wall:radial-gradient(55% 55% at 12% 18%,#7a2c6c 0,transparent 62%),radial-gradient(50% 50% at 88% 12%,#1f4f8f 0,transparent 62%),radial-gradient(60% 60% at 72% 92%,#3d2f8f 0,transparent 62%),radial-gradient(50% 50% at 8% 92%,#7a4a1d 0,transparent 62%),#12131a;
+  }
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--text);font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow:hidden;background:#dfe5f6}
+#wall{position:fixed;inset:0;background:var(--wall);z-index:0}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- the window ---------- */
+#app{position:relative;z-index:1;margin:max(14px,2.2vh) auto;width:calc(100% - 28px);max-width:1560px;height:calc(100dvh - max(28px,4.4vh));
+  border-radius:14px;overflow:hidden;display:grid;grid-template-columns:238px 372px minmax(0,1fr);box-shadow:var(--shadow)}
+.glass{-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%)}
+#sidebar{background:var(--side);display:flex;flex-direction:column;border-right:.5px solid var(--sep);min-height:0}
+#list{background:var(--list);display:flex;flex-direction:column;border-right:.5px solid var(--sep);min-height:0;min-width:0}
+#reader{background:var(--read);display:flex;flex-direction:column;min-height:0;min-width:0;position:relative}
+
+/* ---------- sidebar ---------- */
+.traffic{display:flex;gap:8px;padding:14px 16px 6px}
+.traffic i{width:12px;height:12px;border-radius:50%;display:block;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18)}
+.traffic i:nth-child(1){background:#ff5f57}.traffic i:nth-child(2){background:#febc2e}.traffic i:nth-child(3){background:#28c840}
+.side-scroll{flex:1;overflow:auto;padding:6px 10px 10px}
+.side-h{font-size:11px;font-weight:600;color:var(--text2);padding:14px 10px 4px}
+.nav{display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:8px;font-size:13px;text-align:left;color:var(--text)}
+.nav svg.i{color:var(--accent);width:17px;height:17px}
+.nav:hover{background:var(--hover)}
+.nav.active{background:var(--fill2)}
+.nav .n{margin-left:auto;font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums}
+.nav .n.hot{background:var(--orange);color:#fff;border-radius:9px;padding:0 7px;font-weight:600;font-size:11.5px}
+.side-foot{padding:10px 12px 14px;border-top:.5px solid var(--sep);display:flex;flex-direction:column;gap:8px}
+.pill-ai{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);padding:2px 4px}
+.pill-ai b{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.pill-ai.on b{background:var(--green);box-shadow:0 0 0 3px rgba(52,199,89,.22)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 12px;border-radius:8px;background:var(--fill);font-weight:500;font-size:12.5px;transition:background .15s}
+.btn:hover{background:var(--fill2)}
+.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{filter:brightness(1.08)}
+.btn.block{width:100%}
+a.btn{text-decoration:none;color:var(--text)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+
+/* ---------- message list ---------- */
+.list-head{padding:14px 16px 10px;border-bottom:.5px solid var(--sep)}
+.back{display:none;align-items:center;gap:2px;color:var(--accent);font-size:16px;margin:0 0 6px -6px;padding:2px 4px}
+.title-row{display:flex;align-items:baseline;gap:8px}
+.title-row h1{font-size:20px;font-weight:700;letter-spacing:-.2px}
+.title-row .sub{font-size:12px;color:var(--text2)}
+.search{display:flex;align-items:center;gap:7px;margin-top:10px;background:var(--fill);border-radius:9px;padding:6px 10px;color:var(--text2)}
+.search input{flex:1;background:none;border:0;outline:0;min-width:0;color:var(--text)}
+.search input::placeholder{color:var(--text2)}
+.rows{flex:1;overflow:auto;padding:4px 0 10px;scrollbar-width:thin}
+.row{position:relative;display:block;width:calc(100% - 12px);margin:1px 6px;padding:9px 12px 10px 24px;border-radius:9px;text-align:left}
+.row:hover{background:var(--hover)}
+.row.sel{background:var(--accent);color:#fff}
+.row .dot{position:absolute;left:9px;top:15px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.row.sel .dot{background:#fff}
+.r1{display:flex;align-items:center;gap:6px}
+.r1 .nm{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.r1 svg.i{width:13px;height:13px;color:var(--text2)}
+.row.sel .r1 svg.i{color:rgba(255,255,255,.85)}
+.r2{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.r3{font-size:12.5px;color:var(--text2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:1px}
+.row.sel .r3{color:rgba(255,255,255,.82)}
+.chips{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--fill);color:var(--text2)}
+.chip.red{background:var(--red-bg);color:var(--red)}.chip.green{background:var(--green-bg);color:var(--green)}
+.chip.orange{background:var(--orange-bg);color:#c66f00}.chip.blue{background:var(--blue-bg);color:var(--accent)}
+@media (prefers-color-scheme:dark){.chip.orange{color:var(--orange)}}
+.row.sel .chip{background:rgba(255,255,255,.24);color:#fff}
+.empty-list{padding:40px 20px;text-align:center;color:var(--text2)}
+
+/* ---------- reader ---------- */
+.toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:.5px solid var(--sep);min-height:46px}
+.toolbar .sp{flex:1}
+.icon-btn{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:8px;color:var(--text2);font-size:12.5px}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
+.reader-scroll{flex:1;overflow:auto;padding:22px 30px 40px}
+.rd-head{display:flex;gap:12px;align-items:center}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px;flex:none}
+.rd-from b{display:block;font-size:14px}.rd-from span{color:var(--text2);font-size:12.5px}
+h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6px;line-height:1.25}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.body{white-space:pre-wrap;font-size:14px;line-height:1.55;padding:14px 0 6px;border-top:.5px solid var(--sep);margin-top:12px}
+.files{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.file{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:10px;background:var(--fill);font-size:12.5px;color:var(--text);text-decoration:none}
+.file:hover{background:var(--fill2)}
+.file .ext{font-size:10px;font-weight:700;letter-spacing:.4px;background:var(--card-solid);border-radius:4px;padding:1px 5px;color:var(--text2)}
+.card{margin-top:18px;border-radius:14px;background:var(--card);border:.5px solid var(--sep);box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:16px 18px}
+.banner .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff}
+.banner .ic svg.i{width:19px;height:19px;stroke-width:2}
+.banner h3{font-size:15.5px;font-weight:650;letter-spacing:-.15px}
+.banner p{color:var(--text2);font-size:13px;margin-top:2px}
+.banner.green{background:var(--green-bg)}.banner.green .ic{background:var(--green)}
+.banner.red{background:var(--red-bg)}.banner.red .ic{background:var(--red)}
+.banner.orange{background:var(--orange-bg)}.banner.orange .ic{background:var(--orange)}
+.banner.blue{background:var(--blue-bg)}.banner.blue .ic{background:var(--accent)}
+.banner.gray{background:var(--fill)}.banner.gray .ic{background:#8e8e93}
+.issues{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.issue{font-size:13px}.issue b{font-weight:600}.issue .sv{font-variant-numeric:tabular-nums}
+.vt{padding:4px 6px 8px}
+.vt-row{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr) 30px;gap:10px;align-items:center;padding:9px 12px;border-radius:9px}
+.vt-row+.vt-row{border-top:.5px solid var(--sep)}
+.vt-head{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;padding-bottom:4px}
+.vt-row.mismatch{background:var(--red-bg);border-top-color:transparent}
+.vt-row.missing{background:var(--orange-bg);border-top-color:transparent}
+.vt-row .f{font-weight:550;color:var(--text)}
+.vt-row .v{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.vt-row.mismatch .v{font-weight:600}.vt-row .v.none{color:var(--text3)}
+.vt-row .tag{display:none;font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+.st{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.st svg.i{width:13px;height:13px;stroke-width:2.4}
+.st.match{background:var(--green)}.st.mismatch{background:var(--red)}.st.missing{background:var(--orange)}
+.sec{padding:14px 18px 4px;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
+.evidence{padding:4px 18px 8px;display:flex;flex-direction:column;gap:8px}
+.ev{border-radius:10px;background:var(--fill);padding:8px 12px}
+.ev summary{cursor:pointer;font-weight:550;list-style:none;display:flex;gap:8px;align-items:center}
+.ev summary::-webkit-details-marker{display:none}
+.ev pre{margin-top:8px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text2);max-height:240px;overflow:auto}
+.ev img{display:block;max-width:100%;border-radius:8px;margin-top:8px;background:#fff;border:.5px solid var(--sep)}
+.ev .bad{color:var(--red);font-size:12.5px;margin-top:4px}
+.aibox{margin:6px 18px 4px;padding:10px 12px;border-radius:10px;background:linear-gradient(135deg,rgba(175,82,222,.14),rgba(0,122,255,.12));display:flex;gap:9px;font-size:12.5px}
+.aibox svg.i{color:#af52de;margin-top:1px}
+.form{padding:4px 6px 4px}
+.form .vt-row{grid-template-columns:150px minmax(0,1fr) minmax(0,1fr)}
+.form input{width:100%;padding:7px 9px;border-radius:8px;border:.5px solid var(--sep);background:var(--card-solid);outline:0;min-width:0}
+.form input:focus{box-shadow:0 0 0 3px rgba(0,122,255,.28);border-color:var(--accent)}
+.form input.ai{background:linear-gradient(0deg,rgba(175,82,222,.08),rgba(175,82,222,.08)),var(--card-solid)}
+.colh small{display:block;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text3);font-size:11px}
+.note{margin:6px 18px 0}
+.note textarea{width:100%;min-height:52px;resize:vertical;padding:8px 10px;border-radius:9px;border:.5px solid var(--sep);background:var(--card-solid);outline:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px 16px}
+.small{font-size:12px;color:var(--text2)}
+.reviewed{display:flex;gap:8px;align-items:center;padding:10px 18px;border-top:.5px solid var(--sep);font-size:12.5px;color:var(--text2)}
+.reviewed svg.i{color:var(--accent)}
+.reviewed .lk{margin-left:auto;color:var(--accent)}
+.blank{flex:1;display:grid;place-items:center;color:var(--text3);text-align:center}
+.blank svg{width:64px;height:64px;stroke-width:1.2;margin-bottom:8px}
+.blank div{font-size:20px;font-weight:600;color:var(--text2)}
+
+/* ---------- loading + toast ---------- */
+#boot{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:var(--read)}
+#boot .box{width:min(340px,80%);text-align:center}
+#boot h3{font-size:17px;font-weight:650;margin-bottom:4px}
+#boot p{color:var(--text2);font-size:13px;margin-bottom:14px}
+.bar{height:6px;border-radius:6px;background:var(--fill2);overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .4s}
+#toast{position:fixed;z-index:9;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;padding:10px 16px;border-radius:12px;background:rgba(30,30,34,.86);color:#fff;font-size:13px;pointer-events:none;transition:.25s;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- iPhone-style stack on small screens ---------- */
+@media (max-width:900px){
+  body{background:var(--side)}
+  #app{margin:0;width:100%;height:100dvh;border-radius:0;display:block;box-shadow:none}
+  #sidebar,#list,#reader{position:absolute;inset:0;width:100%;border:0}
+  #app[data-view="boxes"] #list,#app[data-view="boxes"] #reader,#app[data-view="list"] #sidebar,#app[data-view="list"] #reader,
+  #app[data-view="detail"] #sidebar,#app[data-view="detail"] #list{display:none}
+  .traffic{display:none}
+  #sidebar{padding-top:env(safe-area-inset-top)}
+  .side-scroll{padding:24px 16px}
+  .side-scroll:before{content:"Mailboxes";display:block;font-size:32px;font-weight:700;letter-spacing:-.5px;margin-bottom:10px;padding-left:6px}
+  .nav{padding:12px 12px;background:var(--card);border-radius:0;font-size:16px}
+  .nav+.nav{border-top:.5px solid var(--sep)}
+  .side-h{padding:20px 8px 6px}
+  .list-head{padding-top:calc(10px + env(safe-area-inset-top))}
+  .back{display:inline-flex}
+  .title-row h1{font-size:32px;letter-spacing:-.5px}
+  .row{padding-top:11px;padding-bottom:12px}
+  .reader-scroll{padding:16px 16px calc(40px + env(safe-area-inset-bottom))}
+  .toolbar{padding-top:calc(8px + env(safe-area-inset-top))}
+  .toolbar .back{display:inline-flex;margin:0}
+  .vt-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 28px;row-gap:2px;align-items:start}
+  .vt-row .st{align-self:center}
+  .vt-row .f{grid-column:1/-1}
+  .vt-row .tag{display:block}
+  .vt-head{display:none}
+  .form .vt-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="wall"></div>
+<div id="app" data-view="list">
+  <aside id="sidebar" class="glass">
+    <div class="traffic"><i></i><i></i><i></i></div>
+    <div class="side-scroll" id="nav"></div>
+    <div class="side-foot">
+      <div class="pill-ai" id="aipill"><b></b><span>AI status…</span></div>
+      <a class="btn block" href="/api/report.csv"><svg class="i"><use href="#i-download"/></svg>Export discrepancy report</a>
+    </div>
+  </aside>
+  <section id="list" class="glass">
+    <div class="list-head">
+      <button class="back" id="backBoxes"><svg class="i" style="width:20px;height:20px"><use href="#i-chev"/></svg>Mailboxes</button>
+      <div class="title-row"><h1 id="listTitle">Inbox</h1><span class="sub" id="listSub"></span></div>
+      <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search" autocomplete="off"></label>
+    </div>
+    <div class="rows" id="rows"></div>
+  </section>
+  <main id="reader" class="glass">
+    <div class="toolbar">
+      <button class="back" id="backList"><svg class="i" style="width:20px;height:20px"><use href="#i-chev"/></svg><span id="backLabel">Inbox</span></button>
+      <span class="sp"></span>
+      <button class="icon-btn" id="retryBtn" style="display:none" title="Run the check again"><svg class="i"><use href="#i-retry"/></svg>Retry</button>
+    </div>
+    <div class="reader-scroll" id="reader-body"></div>
+    <div id="boot"><div class="box"><h3>Reading the inbox…</h3><p id="bootMsg">Classifying emails and comparing documents</p><div class="bar"><i id="bootBar"></i></div></div></div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13l2-6.5A2 2 0 0 1 7.9 5h8.2A2 2 0 0 1 18 6.5L20 13"/><path d="M4 13v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4h-4.5a3.5 3.5 0 0 1-7 0z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.3v.01"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M12 5C6 5 2.5 12 2.5 12S6 19 12 19s9.5-7 9.5-7S18 5 12 5z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-checkc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-newdoc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5M12 11v6M9 14h6"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.5L12 13l8.5-5.5"/></symbol>
+  <symbol id="i-junk" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 12.5h10L18 7"/><path d="M10 11l4 4M14 11l-4 4"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.5 17a1.7 1.7 0 0 1-2.4-2.4L14 7.7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3l1.9 5.6L18.5 10.5 12.9 12.4 11 18l-1.9-5.6L3.5 10.5 9.1 8.6z"/><path d="M19 15v4M17 17h4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 11L12 15.5 16.5 11M5 20h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6z"/><path d="M8.8 12l2.3 2.3 4.2-4.4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</svg>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ico = (n, cls='') => `<svg class="i ${cls}"><use href="#i-${n}"/></svg>`;
+const FIELD = {shipper:'Shipper', consignee:'Consignee', notify_party:'Notify party', port_of_loading:'Port of loading',
+  port_of_discharge:'Port of discharge', container_count:'Container count', gross_weight_kg:'Gross weight (kg)'};
+const CAT = {BL_COMPARISON:'Document check', SI_REQUEST:'New SI request', INVOICE_QUERY:'Invoice query', GENERAL:'General', SPAM:'Junk'};
+const REASON = {missing_attachment:'Attachment missing', unreadable:'Document unreadable', wrong_doc_type:'Wrong document attached', missing_value:'Required value missing'};
+const REASON_LONG = {
+  missing_attachment:'The request needs both a Shipping Instruction and a draft Bill of Lading, but not both arrived. The check has been paused rather than guessed.',
+  unreadable:'At least one attachment could not be read reliably (a scan with no text layer, or a damaged file), so it was not compared automatically.',
+  wrong_doc_type:'One of the attachments is not the document it was supposed to be (for example an invoice instead of a Bill of Lading).',
+  missing_value:'A required value is blank or not stated in one of the documents, so the seven fields cannot be compared with confidence.'};
+const INFO = {
+  SI_REQUEST:['newdoc','blue','New Shipping Instruction request','This sender is asking for a new Shipping Instruction to be prepared. It was classified only; document checking applies to comparison requests.'],
+  INVOICE_QUERY:['receipt','blue','Invoice query','A question about an invoice or charges. Classified only; no document comparison is needed.'],
+  GENERAL:['mail','gray','General message','An operational update or general note. Classified only; no action needed for verification.'],
+  SPAM:['junk','red','Looks like junk','This message looks like spam or phishing. Classified only; nothing was opened or compared.']};
+const BOXES = [
+  {id:'all', label:'Inbox', icon:'tray', test:()=>true},
+  {group:'Document checks'},
+  {id:'review', label:'Needs review', icon:'eye', test:e=>e.status==='NEEDS_REVIEW', hot:e=>e.status==='NEEDS_REVIEW'&&!e.resolved},
+  {id:'mismatch', label:'Mismatches', icon:'warn', test:e=>e.status==='MISMATCH'},
+  {id:'ok', label:'No mismatch', icon:'checkc', test:e=>e.category==='BL_COMPARISON'&&e.status==='OK'&&!e.awaiting},
+  {id:'checks', label:'All document checks', icon:'doc', test:e=>e.category==='BL_COMPARISON'},
+  {group:'Other mail'},
+  {id:'si', label:'New SI requests', icon:'newdoc', test:e=>e.category==='SI_REQUEST'},
+  {id:'invoice', label:'Invoice queries', icon:'receipt', test:e=>e.category==='INVOICE_QUERY'},
+  {id:'general', label:'General', icon:'mail', test:e=>e.category==='GENERAL'},
+  {id:'spam', label:'Junk', icon:'junk', test:e=>e.category==='SPAM'},
+];
+const state = {emails:[], box:'all', q:'', sel:null, detail:null};
+
+/* ------------------------------------------------ data */
+async function api(url, opt){
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+async function boot(){
+  while(true){
+    const j = await api('/api/emails');
+    if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
+    if(j.ready){
+      state.emails = j.emails; setAI(j.ai);
+      $('#boot').remove(); renderAll(); return;
+    }
+    $('#bootBar').style.width = (100*j.done/j.total)+'%';
+    $('#bootMsg').textContent = `${j.done} of ${j.total} emails processed`;
+    await new Promise(r=>setTimeout(r,600));
+  }
+}
+function setAI(on){
+  const p=$('#aipill'); p.className='pill-ai'+(on?' on':'');
+  p.querySelector('span').textContent = on ? 'Gemini AI connected' : 'AI off · rules only';
+}
+async function refreshList(){ const j = await api('/api/emails'); state.emails = j.emails; renderSidebar(); renderList(); }
+
+/* ------------------------------------------------ helpers */
+const attention = e => (e.status==='MISMATCH' && !e.human) || (e.status==='NEEDS_REVIEW' && !e.resolved);
+function chip(e){
+  if(e.category==='BL_COMPARISON'){
+    if(e.status==='MISMATCH') return ['red', `${e.mismatches} mismatch${e.mismatches>1?'es':''}`];
+    if(e.status==='NEEDS_REVIEW') return e.resolved ? ['blue','Resolved'] : ['orange','Needs review'];
+    if(e.awaiting) return ['','Awaiting draft BL'];
+    return ['green','No mismatch'];
+  }
+  return [e.category==='SPAM'?'red':'', CAT[e.category]];
+}
+const show = v => (v==null||v==='') ? null : String(v).split(' | ')[0];
+function visible(){
+  const box = BOXES.find(b=>b.id===state.box), q = state.q.trim().toLowerCase();
+  return state.emails.filter(e => box.test(e) && (!q || (e.name+' '+e.from+' '+e.subject+' '+e.preview+' '+e.id).toLowerCase().includes(q)));
+}
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+const setView = v => $('#app').dataset.view = v;
+
+/* ------------------------------------------------ sidebar */
+function renderSidebar(){
+  $('#nav').innerHTML = BOXES.map(b=>{
+    if(b.group) return `<div class="side-h">${b.group}</div>`;
+    const n = state.emails.filter(b.test).length, hot = b.hot ? state.emails.filter(b.hot).length : 0;
+    return `<button class="nav ${state.box===b.id?'active':''}" data-box="${b.id}">${ico(b.icon)}<span>${b.label}</span>
+      <span class="n ${hot?'hot':''}">${hot||n}</span></button>`;
+  }).join('');
+}
+$('#nav').addEventListener('click', ev=>{
+  const b = ev.target.closest('[data-box]'); if(!b) return;
+  state.box=b.dataset.box; renderSidebar(); renderList(); setView('list');
+});
+
+/* ------------------------------------------------ list */
+function renderList(){
+  const box = BOXES.find(b=>b.id===state.box), list = visible();
+  $('#listTitle').textContent = box.label;
+  $('#listSub').textContent = `${list.length} message${list.length===1?'':'s'}`;
+  $('#backLabel').textContent = box.label;
+  $('#rows').innerHTML = list.length ? list.map(e=>{
+    const [c, t] = chip(e);
+    return `<button class="row ${state.sel===e.id?'sel':''}" data-id="${e.id}">
+      ${attention(e)?'<span class="dot"></span>':''}
+      <div class="r1"><span class="nm">${esc(e.name)}</span>${e.ai?ico('spark'):''}${e.attachments?ico('clip'):''}</div>
+      <div class="r2">${esc(e.subject)}</div>
+      <div class="r3">${esc(e.preview)}</div>
+      <div class="chips"><span class="chip ${c}">${esc(t)}</span></div></button>`;
+  }).join('') : `<div class="empty-list">No messages</div>`;
+}
+$('#rows').addEventListener('click', ev=>{ const r=ev.target.closest('[data-id]'); if(r) select(r.dataset.id); });
+$('#q').addEventListener('input', ev=>{ state.q=ev.target.value; renderList(); });
+$('#backBoxes').onclick = ()=>setView('boxes');
+$('#backList').onclick = ()=>setView('list');
+document.addEventListener('keydown', ev=>{
+  if(!['ArrowDown','ArrowUp'].includes(ev.key) || ['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const list = visible(); if(!list.length) return;
+  let i = list.findIndex(e=>e.id===state.sel); i = ev.key==='ArrowDown' ? Math.min(list.length-1,i+1) : Math.max(0,i-1);
+  ev.preventDefault(); select(list[i].id, true);
+});
+
+async function select(id, scroll){
+  state.sel = id; renderList();
+  if(scroll) document.querySelector(`.row[data-id="${id}"]`)?.scrollIntoView({block:'nearest'});
+  state.detail = await api('/api/emails/'+id);
+  renderReader(); setView('detail');
+}
+
+/* ------------------------------------------------ reader */
+function tableHtml(rows){
+  return `<div class="vt"><div class="vt-row vt-head"><span>Field</span><span>Shipping Instruction</span><span>Draft Bill of Lading</span><span></span></div>` +
+    rows.map(r=>{
+      const s=show(r.si), b=show(r.bl), icon = r.status==='match'?'check':r.status==='mismatch'?'x':'warn';
+      return `<div class="vt-row ${r.status}"><span class="f">${FIELD[r.field]}</span>
+        <span class="v ${s?'':'none'}"><span class="tag">SI</span>${esc(s??'—')}</span>
+        <span class="v ${b?'':'none'}"><span class="tag">BL</span>${esc(b??'—')}</span>
+        <span class="st ${r.status}">${ico(icon)}</span></div>`;
+    }).join('') + `</div>`;
+}
+const banner = (color, icon, title, sub, extra='') =>
+  `<div class="banner ${color}"><div class="ic">${ico(icon)}</div><div><h3>${title}</h3>${sub?`<p>${sub}</p>`:''}${extra}</div></div>`;
+
+function reviewedFooter(d){
+  if(!d.review) return '';
+  const when = new Date(d.review.at).toLocaleString([], {dateStyle:'medium', timeStyle:'short'});
+  return `<div class="reviewed">${ico('shield')}<span>${d.review.action==='corrected'?'Verified by a person':'Resolved by a person'} · ${esc(when)}${d.review.note?' · “'+esc(d.review.note)+'”':''}</span>
+    <button class="lk" id="undoBtn">Undo</button></div>`;
+}
+function verifyCard(d){
+  if(d.category!=='BL_COMPARISON'){
+    const [ic,color,title,sub] = INFO[d.category];
+    const by = d.decided_by==='llm' ? ' Classified by AI.' : d.decided_by==='fallback' ? ' Filed here by default (AI unavailable).' : '';
+    return `<div class="card">${banner(color,ic,title,sub+by)}</div>`;
+  }
+  if(d.awaiting) return `<div class="card">${banner('gray','clock','Draft BL requested','The sender asked for the draft Bill of Lading. There are no attachments yet, so there is nothing to compare.')}</div>`;
+  if(d.status==='NEEDS_REVIEW' && !(d.review && d.review.action==='resolved')) return reviewCard(d);
+  if(d.status==='NEEDS_REVIEW') return `<div class="card">${banner('blue','shield','Resolved by a person', esc(REASON[d.reason]||'')+(d.detail?' — '+esc(d.detail):''))}${reviewedFooter(d)}</div>`;
+  const rows = d.table || [];
+  const bad = rows.filter(r=>r.status==='mismatch');
+  const head = d.status==='OK'
+    ? banner('green','check','No mismatch detected','All seven fields agree between the Shipping Instruction and the draft Bill of Lading.')
+    : banner('red','warn',`${bad.length} mismatch${bad.length>1?'es':''} found`, 'Fix these on the draft Bill of Lading before it is finalised.',
+        `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>`);
+  return `<div class="card">${head}${tableHtml(rows)}${reviewedFooter(d)}</div>`;
+}
+function evidenceHtml(d){
+  return `<div class="sec">Source documents</div><div class="evidence">` + d.files.map(f=>{
+    if(f.scan) return `<div class="ev"><b>${esc(f.name)}</b> <span class="chip orange">scanned · no text</span>
+      <img loading="lazy" alt="Scanned page" src="/api/attachment/${d.id}/${encodeURIComponent(f.name)}?render=png"></div>`;
+    if(f.error) return `<div class="ev"><b>${esc(f.name)}</b> <span class="chip red">unreadable</span><div class="bad">${esc(f.error)}</div></div>`;
+    return `<details class="ev"><summary>${ico('doc')}<span>${esc(f.name)}</span><span class="chip green">read OK</span></summary><pre>${esc(f.text)}</pre></details>`;
+  }).join('') + (d.files.length ? '' : `<div class="small">No attachments arrived with this email.</div>`) + `</div>`;
+}
+function reviewCard(d){
+  const f = d.form, ai = d.ai_suggestion;
+  const aiSide = k => (f && (f[k+'_source']||'').startsWith('AI'));
+  const inputs = !f ? '' : `<div class="sec">Confirm the values</div>
+    <div class="form"><div class="vt-row vt-head colh"><span>Field</span>
+      <span>Shipping Instruction<small>${esc(f.si_source)}</small></span><span>Draft Bill of Lading<small>${esc(f.bl_source)}</small></span></div>` +
+    d.fields.map(k=>`<div class="vt-row"><span class="f">${FIELD[k]}</span>
+      <input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}">
+      <input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}"></div>`).join('') + `</div>`;
+  return `<div class="card">
+    ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'')}
+    ${ai?`<div class="aibox">${ico('spark')}<div>Gemini read the scan and suggested the highlighted values. It can misread small print, so please confirm each one against the page${ai.would_flag && ai.would_flag.length ? ` (it would flag: ${ai.would_flag.map(x=>FIELD[x]).join(', ')})`:''}.</div></div>`:''}
+    ${evidenceHtml(d)}${inputs}
+    <div class="note"><textarea id="note" placeholder="Reviewer note (optional)"></textarea></div>
+    <div class="actions">
+      <button class="btn primary" id="recheckBtn">Save &amp; re-check</button>
+      <button class="btn" id="resolveBtn">Mark as resolved</button>
+      <span class="small" style="align-self:center">Re-check compares your values and updates the report.</span>
+    </div></div>`;
+}
+function renderReader(){
+  const d = state.detail, el = $('#reader-body');
+  $('#retryBtn').style.display = d && d.category==='BL_COMPARISON' ? '' : 'none';
+  if(!d){ el.innerHTML = `<div class="blank" style="height:100%"><div>${ico('mail')}<div>No Message Selected</div></div></div>`; return; }
+  const [c,t] = chip(d);
+  el.innerHTML = `
+    <div class="rd-head"><div class="avatar" style="background:linear-gradient(135deg,hsl(${d.hue} 68% 62%),hsl(${(d.hue+35)%360} 72% 50%))">${esc(d.initials)}</div>
+      <div class="rd-from"><b>${esc(d.name)}</b><span>${esc(d.from)}</span></div></div>
+    <h2 class="subject">${esc(d.subject)}</h2>
+    <div class="meta"><span class="chip ${c}">${esc(t)}</span><span class="chip">${esc(d.id)}</span>${d.ai?`<span class="chip blue">${ico('spark')} AI-assisted</span>`:''}</div>
+    ${d.files.length?`<div class="files">${d.files.map(f=>`<a class="file" href="/api/attachment/${d.id}/${encodeURIComponent(f.name)}">${ico('clip')}<span>${esc(f.name)}</span><span class="ext">${esc(f.ext)}</span></a>`).join('')}</div>`:''}
+    ${verifyCard(d)}
+    ${d.ai_notes && d.ai_notes.length ? `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>${d.ai_notes.map(esc).join('<br>')}</div></div></div>`:''}
+    <div class="body">${esc(d.body)}</div>`;
+  el.scrollTop = 0;
+}
+
+/* ------------------------------------------------ actions */
+async function act(url, opt, msg){
+  try{ state.detail = await api(url, opt); renderReader(); await refreshList(); toast(msg); }
+  catch(e){ toast(e.message); }
+}
+const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+$('#reader').addEventListener('click', ev=>{
+  const id = state.sel; if(!id) return;
+  if(ev.target.closest('#recheckBtn')){
+    const si={}, bl={};
+    document.querySelectorAll('.form input').forEach(i => (i.dataset.side==='si'?si:bl)[i.dataset.f] = i.value);
+    act(`/api/emails/${id}/recheck`, post({si, bl, note:$('#note').value}), 'Report updated');
+  } else if(ev.target.closest('#resolveBtn')){
+    act(`/api/emails/${id}/resolve`, post({note:$('#note').value}), 'Marked as resolved');
+  } else if(ev.target.closest('#undoBtn')){
+    act(`/api/emails/${id}/review`, {method:'DELETE'}, 'Reopened');
+  }
+});
+$('#retryBtn').onclick = async ()=>{
+  const b=$('#retryBtn'); b.disabled=true;
+  await act(`/api/emails/${state.sel}/retry`, {method:'POST'}, 'Checked again'); b.disabled=false;
+};
+
+function renderAll(){ renderSidebar(); renderList(); }
+renderReader(); boot();
+</script>
+</body>
+</html>

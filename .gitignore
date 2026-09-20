@@ -1,0 +1,9 @@
+# secrets and local files - never commit these
+.env
+venv/
+__pycache__/
+submission.json
+ground_truth.json
+.cache/
+.cache/
+reviews.json

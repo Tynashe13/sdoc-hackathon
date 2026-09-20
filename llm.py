@@ -1,0 +1,148 @@
+"""Gemini helpers.
+
+Everything here is OPTIONAL.  No API key, no library, or any API error means the
+functions return None / {} and the pipeline carries on with rules + human review.
+Every answer is cached on disk (.cache/llm) so re-runs cost nothing.
+"""
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+from extract import FIELDS
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")   # change in .env if AI Studio lists another
+CACHE = Path(".cache/llm")
+_client, _tried = None, False
+
+CATEGORIES = {
+    "BL_COMPARISON": "asks us to check/compare a Shipping Instruction against a draft Bill of Lading, "
+                     "or asks for the draft BL to be sent so it can be checked",
+    "SI_REQUEST":    "sends shipment details asking us to prepare a NEW Shipping Instruction",
+    "INVOICE_QUERY": "a question or dispute about an invoice, charges, billing or payment",
+    "GENERAL":       "legitimate operational updates, notifications, reports, greetings - anything else",
+    "SPAM":          "unsolicited, phishing, scam or advertising",
+}
+
+
+def _get_client():
+    global _client, _tried
+    if _tried:
+        return _client
+    _tried = True
+    key = os.getenv("GEMINI_API_KEY")
+    if os.getenv("USE_LLM", "1") == "0" or not key:
+        return None
+    try:
+        from google import genai
+        _client = genai.Client(api_key=key)
+    except Exception:
+        _client = None
+    return _client
+
+
+def enabled() -> bool:
+    return _get_client() is not None
+
+
+def ask_json(prompt, images=()):
+    """One Gemini call that must return JSON.  Cached, retried, never raises."""
+    client = _get_client()
+    if client is None:
+        return None
+    digest = hashlib.sha256(MODEL.encode() + prompt.encode() + b"".join(images)).hexdigest()
+    cache_file = CACHE / f"{digest}.json"
+    if cache_file.exists():
+        return json.loads(cache_file.read_text())
+    from google.genai import types
+    parts = [types.Part.from_bytes(data=img, mime_type="image/png") for img in images] + [prompt]
+    config = types.GenerateContentConfig(
+        temperature=0, response_mime_type="application/json",
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
+    for attempt in range(4):
+        try:
+            reply = client.models.generate_content(model=MODEL, contents=parts, config=config)
+            data = json.loads(reply.text)
+            CACHE.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(json.dumps(data))
+            return data
+        except Exception as exc:
+            code = getattr(exc, "code", None)
+            print(f"[llm] Gemini call failed (try {attempt + 1}/4): {type(exc).__name__}: "
+                  f"{str(exc)[:300]}", file=sys.stderr)
+            if code in (400, 401, 403, 404):      # bad key / bad model name: retrying is pointless
+                _disable(f"stopping AI calls for this run - fix the problem above (HTTP {code})")
+                return None
+            time.sleep(2 ** (attempt + 1))         # rate limit (429) / server error: back off
+    return None
+
+
+def _disable(why):
+    global _client
+    print(f"[llm] {why}", file=sys.stderr)
+    _client = None
+
+
+def classify_email(email, body):
+    """Second opinion for emails the keyword rules could not place."""
+    if not enabled():
+        return None
+    menu = "\n".join(f"- {k}: {v}" for k, v in CATEGORIES.items())
+    prompt = (
+        "You triage a shipping operations inbox.  Classify the email by what its BODY asks for; "
+        "the subject line may be misleading.\n"
+        f"Categories:\n{menu}\n\n"
+        f"Subject: {email['subject']}\nAttachments: {len(email['attachments'])}\nBody:\n{body[:1500]}\n\n"
+        'Reply as JSON: {"category": "<one category>", "confidence": "high|medium|low", "reason": "<short>"}')
+    out = ask_json(prompt)
+    return out if isinstance(out, dict) and out.get("category") in CATEGORIES else None
+
+
+def _norm(s):
+    return re.sub(r"\s+", " ", str(s)).lower()
+
+
+def fill_missing(text, fields):
+    """Ask Gemini only for fields the rules could not find.  A value is accepted only when
+    the line it quotes really appears in the document - this blocks made-up answers."""
+    if not enabled() or not fields:
+        return {}
+    prompt = (
+        "Below is a shipping document.  Find these fields, wording may differ from the names "
+        f"given: {fields}.\nReturn JSON mapping each field to "
+        '{"value": "<as printed>", "evidence": "<the exact line of the document containing it>"}, '
+        "or {\"value\": null, \"evidence\": null} when the document does not state it.  Never guess.\n\n"
+        f"DOCUMENT:\n{text[:6000]}")
+    out = ask_json(prompt) or {}
+    found = {}
+    for f in fields:
+        item = out.get(f) if isinstance(out, dict) else None
+        item = item if isinstance(item, dict) else {}
+        value, evidence = item.get("value"), item.get("evidence")
+        if value and evidence and _norm(evidence) in _norm(text) and _norm(value) in _norm(evidence):
+            found[f] = str(value)
+    return found
+
+
+def read_scan(images):
+    """Vision read of a scanned page.  -> {field: value or None} or None if unavailable.
+    The caller treats this as a SUGGESTION for a human to confirm, never as final."""
+    if not enabled() or not images:
+        return None
+    prompt = (
+        "This is a scanned shipping document.  Read it and return JSON with exactly these keys: "
+        f"{FIELDS}.  Use the text as printed (container_count like '6 x 40HC', weight with unit).  "
+        "Use null for anything you cannot read with confidence.  Never guess.")
+    out = ask_json(prompt, images=images)
+    if not isinstance(out, dict):
+        return None
+    return {f: (str(out[f]) if out.get(f) else None) for f in FIELDS}
