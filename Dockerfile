@@ -3,7 +3,8 @@ FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 
@@ -22,4 +23,5 @@ ENV PORT=8080
 EXPOSE 8080
 
 # One worker on purpose: results are held in memory, so a second worker would hold its own copy
-CMD ["sh", "-c", "exec gunicorn app:app --workers 1 --threads 4 --timeout 180 --bind 0.0.0.0:${PORT}"]
+# Logs go to stdout/stderr so the host's log page shows every request and any error
+CMD ["sh", "-c", "exec gunicorn app:app --workers 1 --threads 4 --timeout 180 --bind 0.0.0.0:${PORT} --access-logfile - --error-logfile - --log-level info"]

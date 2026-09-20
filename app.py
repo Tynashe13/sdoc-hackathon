@@ -9,6 +9,7 @@ import io
 import json
 import os
 import re
+import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,7 @@ from flask import Flask, Response, abort, jsonify, request, send_from_directory
 
 import llm
 import pipeline
+import snapshot
 from classify import body_core
 from compare import field_table
 from extract import FIELDS
@@ -25,6 +27,7 @@ from readers import NoTextError, ReadError, pdf_page_pngs, read_attachment
 
 DATA_DIR = os.getenv("DATA_DIR", "data")
 REVIEWS_FILE = Path(os.getenv("REVIEWS_PATH", "reviews.json"))
+RESULTS_FILE = os.getenv("RESULTS_FILE", "results.json")
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 inbox = Inbox(DATA_DIR)
@@ -47,7 +50,20 @@ def _boot():
         STATE["error"] = f"{type(exc).__name__}: {exc}"
 
 
-threading.Thread(target=_boot, daemon=True).start()
+def _start():
+    """Use the precomputed results when they match the data and the code; otherwise compute
+    them in the background (slow on a small host, which is why results.json is committed)."""
+    saved = snapshot.load(RESULTS_FILE, DATA_DIR)
+    if saved and set(saved) == set(EMAILS):
+        STATE.update(results=saved, done=len(saved), ready=True)
+        print(f"[app] ready: {len(saved)} emails loaded from {RESULTS_FILE}", file=sys.stderr, flush=True)
+    else:
+        print(f"[app] {RESULTS_FILE} missing or out of date: computing {len(EMAILS)} emails in the "
+              "background (run python precompute.py to avoid this)", file=sys.stderr, flush=True)
+        threading.Thread(target=_boot, daemon=True).start()
+
+
+_start()
 
 
 def _save_reviews():
@@ -127,6 +143,11 @@ def detail(eid):
 @app.get("/")
 def index():
     return send_from_directory("static", "index.html")
+
+
+@app.get("/healthz")
+def healthz():
+    return "ok"
 
 
 @app.get("/api/emails")
