@@ -44,37 +44,6 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 - On scanned emails only the SI page is read by Gemini; the BL side is left for the reviewer.
 - Only cases that need review can be edited in the app.
 
-## Setup
-
-1. Install Python 3.12 or newer
-2. In this folder run: `pip install -r requirements.txt`
-3. Put the inbox data in `data/` (it must contain `inbox/` and `attachments/`)
-
-## Run
-
-    python pipeline.py data
-
-This writes `submission.json` with one result per email.
-
-## AI layer (Gemini)
-
-Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. With no key the program still
-runs, rules-only. The AI is used only where rules are not enough:
-
-| Situation | What the AI does | Safety net |
-|---|---|---|
-| Email the keyword rules cannot place | Classifies it from the body | Falls back to GENERAL if the API fails |
-| A field label the rules do not recognise | Finds the value in the document | Accepted only if the quoted line really appears in the document |
-| Scanned / image-only PDF | Reads the page image | Result is a *suggestion*: the case still goes to a human with the page and the AI reading |
-
-Every email the AI contributed to is tagged **AI-assisted** (in the list, in the sidebar and on the email) and carries a
-disclaimer; a value the AI found is marked `AI` in the comparison table. When the AI was asked but found nothing, a
-grey note says so, and nothing is tagged. If Gemini is busy or out of quota, that is recorded as a failure, never as
-"found nothing".
-
-Every answer is cached in `.cache/`, so re-runs cost no API calls. To rebuild `results.json` with Gemini (about five
-requests, capped): `python precompute.py --with-ai`. It refuses to write the file if any call failed.
-Test the wiring without any API key: `python -m unittest discover -s tests -t . -v`
 
 
 
