@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import threading
+import urllib.parse
 from datetime import datetime, timezone
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
@@ -300,6 +301,52 @@ def api_attachment(eid, name):
             abort(404)
     return Response(data, mimetype="application/octet-stream",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+LAB_MAX_LINES = 400
+
+
+def _lab_marks(eid, name):
+    """Every value whose source line is in this document, so the Test lab can highlight it."""
+    r = effective(eid)
+    marks = []
+    for row in r.get("table") or []:
+        for side in ("si", "bl"):
+            ev = row.get(f"{side}_evidence")
+            if ev and ev.get("doc") == name:
+                marks.append({"field": row["field"], "label": FIELD_NAMES[row["field"]], "side": side.upper(),
+                              "line_no": ev["line_no"], "status": row["status"], "ai": bool(row.get(f"{side}_ai"))})
+    if not marks:                                   # a case that needs review has no table, only the values read so far
+        form = r.get("form") or {}
+        for side in ("si", "bl"):
+            for field, ev in (form.get(f"{side}_evidence") or {}).items():
+                if ev and ev.get("doc") == name and field in FIELD_NAMES:
+                    marks.append({"field": field, "label": FIELD_NAMES[field], "side": side.upper(),
+                                  "line_no": ev["line_no"], "status": "review", "ai": field in form.get(f"{side}_ai", [])})
+    return sorted(marks, key=lambda m: m["line_no"])
+
+
+@app.get("/api/emails/<eid>/lab/<name>")
+def api_lab(eid, name):
+    """The Test lab: one attachment's full text with the lines that every compared value was read from marked."""
+    if eid not in EMAILS or not STATE["ready"]:
+        abort(404)
+    path = next((p for p in EMAILS[eid]["attachments"] if p.endswith("/" + name)), None)
+    if not path:
+        abort(404)
+    out = {"name": name, "download": f"/api/attachment/{eid}/{urllib.parse.quote(name)}", "kind": "text",
+           "lines": [], "marks": [], "truncated": False, "message": None}
+    try:
+        text = read_attachment(name, inbox.read_bytes(path))
+    except NoTextError:                             # a scan: show the page itself, there is no text to mark
+        return jsonify({**out, "kind": "scan", "image": out["download"] + "?render=png",
+                        "message": "This is a scanned page, so there are no text lines to mark. Compare the values with the page."})
+    except ReadError:
+        return jsonify({**out, "kind": "error", "message": "This document could not be read. Download it to open it yourself."})
+    lines = text.splitlines()
+    out.update(lines=lines[:LAB_MAX_LINES], truncated=len(lines) > LAB_MAX_LINES,
+               marks=[m for m in _lab_marks(eid, name) if m["line_no"] <= LAB_MAX_LINES])
+    return jsonify(out)
 
 
 @app.post("/api/emails/<eid>/recheck")
