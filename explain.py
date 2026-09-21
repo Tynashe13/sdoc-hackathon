@@ -133,15 +133,23 @@ def main():
         return 1
     llm.TIMEOUT_MS = int(os.getenv("LLM_TIMEOUT_MS", "180000"))
     llm.MAX_CALLS = int(os.getenv("LLM_MAX_CALLS", "12"))
-    found, cases, dropped = run(results, llm.ask_json)
+    used = set()
+
+    def ask(prompt):
+        out = llm.ask_json_any(prompt)               # falls back to another model when the main one is busy
+        if out is not None and llm.LAST_MODEL:
+            used.add(llm.LAST_MODEL)
+        return out
+
+    found, cases, dropped = run(results, ask)
     if llm.FAILED:
         print(f"{len(llm.FAILED)} Gemini call(s) failed ({llm.FAILED[0]}), so {out_path} was NOT written. "
               "Try again in a few minutes; answers that did arrive are cached.")
         return 1
-    Path(out_path).write_text(json.dumps({"model": llm.MODEL, "explanations": found}, indent=1, sort_keys=True,
+    Path(out_path).write_text(json.dumps({"model": sorted(used) or [llm.MODEL], "explanations": found}, indent=1, sort_keys=True,
                                          ensure_ascii=False), encoding="utf-8")
     print(f"wrote {out_path}: {len(found)} explanations for {cases} cases ({dropped} dropped because they did not "
-          f"mention the values); Gemini requests sent: {llm.CALLS}")
+          f"mention the values); Gemini requests sent: {llm.CALLS}; model(s) used: {', '.join(sorted(used)) or llm.MODEL}")
     return 0
 
 

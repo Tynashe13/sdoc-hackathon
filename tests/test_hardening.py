@@ -70,6 +70,89 @@ class TestLlmHardening(unittest.TestCase):
             self.assertEqual(make.call_count, 2)
 
 
+class TestModelFallback(unittest.TestCase):
+    def client(self, behaviour):
+        calls = []
+
+        class Client:
+            class models:
+                @staticmethod
+                def generate_content(model, **kw):
+                    calls.append(model)
+                    return behaviour(model)
+        return Client, calls
+
+    def patches(self, client, models=("main", "backup")):
+        return [mock.patch.object(llm, "_get_client", return_value=client), mock.patch.object(llm, "MODEL", models[0]),
+                mock.patch.object(llm, "FALLBACK_MODELS", list(models[1:])), mock.patch.object(llm, "ATTEMPTS", 2),
+                mock.patch.object(llm, "CACHE", Path(tempfile.mkdtemp())), mock.patch.object(llm, "FAILED", []),
+                mock.patch.object(llm, "_quota_hit", False), mock.patch.object(llm, "CALLS", 0),
+                mock.patch.object(llm, "MAX_CALLS", None), mock.patch.object(llm, "_client", None),
+                mock.patch.object(llm, "_disabled_at", 0.0), mock.patch.object(llm, "_model_quota_at", {}),
+                mock.patch.object(llm, "_quota_hit_at", 0.0), mock.patch.object(llm.time, "sleep")]
+
+    def run_with(self, patches, fn):
+        from contextlib import ExitStack
+        with ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            return fn(), list(llm.FAILED), llm.LAST_MODEL
+
+    def test_a_busy_main_model_falls_back_to_the_next_and_leaves_no_failure(self):
+        def behaviour(model):
+            if model == "main":
+                raise Boom("high demand", code=503)
+            return mock.Mock(text='{"ok": true}')
+        client, calls = self.client(behaviour)
+        out, failed, used = self.run_with(self.patches(client), lambda: llm.ask_json_any("p"))
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual((failed, used), ([], "backup"))
+        self.assertEqual(calls, ["main", "main", "backup"])          # every attempt on the main model first
+
+    def test_when_every_model_is_busy_the_failure_is_recorded(self):
+        client, calls = self.client(lambda model: (_ for _ in ()).throw(Boom("high demand", code=503)))
+        out, failed, _ = self.run_with(self.patches(client), lambda: llm.ask_json_any("p"))
+        self.assertIsNone(out)
+        self.assertEqual(failed, ["service unavailable", "service unavailable"])
+
+    def test_a_model_out_of_allowance_falls_back_and_is_skipped_next_time(self):
+        def behaviour(model):
+            if model == "main":
+                raise Boom("You exceeded your current quota", code=429)
+            return mock.Mock(text='{"ok": true}')
+        client, calls = self.client(behaviour)
+
+        def twice():
+            return llm.ask_json_any("one"), llm.ask_json_any("two")
+        out, failed, used = self.run_with(self.patches(client), twice)
+        self.assertEqual((out, failed, used), (({"ok": True}, {"ok": True}), [], "backup"))
+        self.assertEqual(calls.count("main"), 2)               # tried twice on the first question, then skipped
+
+    def test_a_missing_fallback_model_does_not_switch_the_main_one_off(self):
+        def behaviour(model):
+            if model == "main":
+                raise Boom("busy", code=503)
+            if model == "gone":
+                raise Boom("not found", code=404)
+            return mock.Mock(text='{"ok": true}')
+        client, calls = self.client(behaviour)
+        out, failed, used = self.run_with(self.patches(client, models=("main", "gone", "backup")),
+                                          lambda: llm.ask_json_any("p"))
+        self.assertEqual((out, failed, used), ({"ok": True}, [], "backup"))
+
+    def test_a_bad_key_does_not_try_other_models(self):
+        client, calls = self.client(lambda model: (_ for _ in ()).throw(Boom("API key not valid", code=403)))
+        out, failed, _ = self.run_with(self.patches(client), lambda: llm.ask_json_any("p"))
+        self.assertIsNone(out)
+        self.assertEqual(set(calls), {"main"})
+
+    def test_the_answer_is_cached_per_model(self):
+        client, calls = self.client(lambda model: mock.Mock(text='{"m": "%s"}' % model))
+        patches = self.patches(client)
+        out, _, _ = self.run_with(patches, lambda: (llm.ask_json("p", model="a"), llm.ask_json("p", model="b")))
+        self.assertEqual(out, ({"m": "a"}, {"m": "b"}))
+
+
 SCRIPT = r'''
 import csv, io, json
 from unittest import mock

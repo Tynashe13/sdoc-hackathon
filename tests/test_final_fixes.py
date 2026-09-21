@@ -16,7 +16,10 @@ import llm
 def run_app_script(code):
     """Run a snippet with the web app imported, in its own process, with a throw-away reviews file."""
     with tempfile.TemporaryDirectory() as tmp:
-        env = {**os.environ, "USE_LLM": "0", "REVIEWS_PATH": str(Path(tmp) / "reviews.json")}
+        # EXPLANATIONS_FILE points at nothing, so these tests see the fixed sentences whether or not the real
+        # explanations.json (the Gemini-written reasons) has been generated
+        env = {**os.environ, "USE_LLM": "0", "REVIEWS_PATH": str(Path(tmp) / "reviews.json"),
+               "EXPLANATIONS_FILE": str(Path(tmp) / "none.json")}
         out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=120)
     if out.returncode:
         raise AssertionError(out.stderr[-1500:])

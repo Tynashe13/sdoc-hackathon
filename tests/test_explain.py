@@ -97,7 +97,7 @@ class TestRun(unittest.TestCase):
                 q.start()
             self.addCleanup(lambda: [q.stop() for q in quiet])
 
-            def failing(prompt):
+            def failing(prompt, images=(), model=None):
                 llm.FAILED.append("service unavailable")
                 return None
 

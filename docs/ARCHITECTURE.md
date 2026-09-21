@@ -14,7 +14,7 @@ Vector versions: [architecture.svg](architecture.svg), [deployment.svg](deployme
 | Read | `readers.py` | TXT, PDF, DOCX and XLSX become text. | A scan or a corrupt file is reported as unreadable and sent to a person. It is never guessed at. |
 | Extract | `extract.py` | Label patterns find the 7 fields under different wordings and keep the exact source line. | A field that cannot be found is missing, so the case goes to a person. |
 | Compare | `compare.py` | Names, ports, containers and weights are normalised, then compared per field. | Deterministic. The AI is never asked whether two values match. |
-| Explain (optional, offline) | `explain.py` | When it has been run, Gemini writes one or two plain sentences saying what differs in each mismatch and why each review case needs a person. It sees only the compared values and never decides. | A sentence that does not mention the values is dropped and a fixed sentence is used instead. |
+| Explain | `explain.py` | Gemini writes one or two plain sentences saying what differs in each mismatch and why each review case needs a person. It sees only the compared values and never decides. | A sentence that does not mention the values is dropped and a fixed sentence is used instead. |
 | Serve | `app.py`, `static/index.html` | Inbox, comparison table with source quotes, review form, CSV report. | |
 | Decide | `store.py` | A person confirms or corrects values. The decision is saved (Supabase, or a local file) and the comparison is recomputed. | |
 
@@ -40,7 +40,7 @@ unreadable scan, blank value) and **AWAITING** (only the draft BL was requested)
 - **Stateless server, external decisions.** Serverless instances are short-lived, so reviewer decisions live in
   Supabase (row-level security on, only the server holds the key) and are read on every request. Running on your own
   machine without Supabase, a JSON file does the same job.
-- **Optional live AI, resilient by design.** The results (and any AI-written reasons) are built offline and saved, so the
+- **Optional live AI, resilient by design.** The results and the AI explanations are built offline and saved, so the
   live site makes no Gemini calls while people browse it. If Gemini is busy or out of quota, Retry keeps the saved
   result and the reviewer's decision. A second AI provider is on the roadmap, but only with the scan readings
   re-checked against the pages, because the evidence for AI quality was gathered on Gemini.

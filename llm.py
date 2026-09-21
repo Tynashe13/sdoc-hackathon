@@ -21,6 +21,11 @@ except ImportError:
     pass
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")   # change in .env if AI Studio lists another
+# other models to try, for the wording-only jobs, when the main model is busy (503), out of quota (429) or missing (404).
+# Each model has its own allowance, so one being used up does not mean the others are.
+FALLBACK_MODELS = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",") if m.strip()]
+LAST_MODEL = None    # the model that gave the most recent answer from ask_json_any
+_model_quota_at = {}  # model -> when it last ran out of allowance (ask_json_any skips it for QUOTA_COOLDOWN seconds)
 CACHE = Path("/tmp/llm-cache" if os.getenv("VERCEL") else ".cache/llm")   # Vercel's disk is read-only except /tmp
 _client, _tried = None, False
 CALLS = 0            # real requests sent to Gemini so far in this run
@@ -67,13 +72,14 @@ def enabled() -> bool:
     return _get_client() is not None
 
 
-def ask_json(prompt, images=()):
+def ask_json(prompt, images=(), model=None):
     """One Gemini call that must return JSON.  Cached, retried, never raises."""
     global CALLS, _quota_hit
+    model = model or MODEL
     client = _get_client()
     if client is None:
         return None
-    digest = hashlib.sha256(MODEL.encode() + prompt.encode() + b"".join(images)).hexdigest()
+    digest = hashlib.sha256(model.encode() + prompt.encode() + b"".join(images)).hexdigest()
     cache_file = CACHE / f"{digest}.json"
     try:
         return json.loads(cache_file.read_text(encoding="utf-8"))
@@ -100,7 +106,7 @@ def ask_json(prompt, images=()):
         print(f"[llm] asking Gemini ({what}), try {attempt + 1}/{ATTEMPTS}; it can take up to a minute ...",
               file=sys.stderr, flush=True)
         try:
-            reply = client.models.generate_content(model=MODEL, contents=parts, config=config)
+            reply = client.models.generate_content(model=model, contents=parts, config=config)
             data = json.loads(reply.text)
             print("[llm] Gemini answered", file=sys.stderr, flush=True)
             try:
@@ -124,11 +130,38 @@ def ask_json(prompt, images=()):
                 return None
             if code in (400, 401, 403, 404):      # bad key / bad model name: retrying is pointless
                 FAILED.append(f"HTTP {code}")
-                _disable(f"stopping AI calls for this run - fix the problem above (HTTP {code})")
+                if model == MODEL:                # a wrong fallback model must not switch the main one off
+                    _disable(f"stopping AI calls for this run - fix the problem above (HTTP {code})")
                 return None
             if attempt < ATTEMPTS - 1:
                 time.sleep(min(2 ** (attempt + 1), 30))   # rate limit (429) / server error: back off
     FAILED.append("service unavailable")
+    return None
+
+
+def ask_json_any(prompt, models=None):
+    """ask_json, but when a model cannot answer (busy 503, its allowance used up 429, or not found 404), try the next
+    model in the list. Only for jobs whose answer is checked afterwards. If a later model answers, the earlier
+    attempts are not counted as failures; if none answers, every failure stays recorded in FAILED. A bad key or a
+    bad request stops the search, because another model would fail the same way."""
+    global LAST_MODEL, _quota_hit
+    models = models or [MODEL] + [m for m in FALLBACK_MODELS if m != MODEL]
+    start = len(FAILED)
+    for m in models:
+        if time.time() - _model_quota_at.get(m, 0) < QUOTA_COOLDOWN:
+            continue                                     # this model used up its allowance a moment ago
+        before = len(FAILED)
+        _quota_hit = False                               # the allowance is per model: judge each one on its own
+        out = ask_json(prompt, model=m)
+        if out is not None:
+            LAST_MODEL = m
+            del FAILED[start:]
+            return out
+        new = FAILED[before:]
+        if "quota exceeded (429)" in new:
+            _model_quota_at[m] = time.time()
+        elif new not in (["service unavailable"], ["HTTP 404"]):
+            break
     return None
 
 
