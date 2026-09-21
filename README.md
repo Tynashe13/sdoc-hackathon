@@ -57,12 +57,19 @@ everywhere. The Gemini key is read from your shell or a `.env` next to `docker-c
 and is passed in when the container starts, never copied into the image. With no key the
 app runs rules-only. Reviewer decisions are kept in a Docker volume across restarts.
 
+**Evidence for every value.** Each value in the comparison table (and in the review form) is shown with
+the exact line of the source document it was read from, plus the file name and line number, so a person
+can check it at a glance. The tests confirm that every quoted line is verbatim line N of the named file
+and contains the displayed value; a value the AI finds is accepted only if it quotes a real line.
+
 **Fast start-up.** `results.json` holds the checked results for every email, so the app is ready
 the moment it starts instead of re-reading every attachment (slow on a small free host). It is
 tied to the data and the checking code by a fingerprint: if either changes, the app ignores the
 file, says so in its log, and computes live. After changing the data or the rules, run
 `python precompute.py` and commit the new `results.json` (`python precompute.py --check` tells
-you whether it is up to date; the test suite checks it too).
+you whether it is up to date; the test suite checks it too). Only do that on a checkout whose
+data files are intact: on Windows, Git can rewrite the line endings inside small PDFs and break
+them, which is why `.gitattributes` marks attachments as binary.
 
 To deploy the same image, use **Render** (New -> Web Service -> Docker) or **Google Cloud Run**
 (`gcloud run deploy --source .`). Both set `PORT` themselves. Add `GEMINI_API_KEY` and

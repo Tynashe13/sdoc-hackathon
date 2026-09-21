@@ -140,6 +140,8 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .vt-row .f{font-weight:550;color:var(--text)}
 .vt-row .v{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .vt-row.mismatch .v{font-weight:600}.vt-row .v.none{color:var(--text3)}
+.vt-row .q{display:block;margin-top:3px;font:400 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text2);font-variant-numeric:normal}
+.vt-row .q i{font-style:normal;color:var(--text3);font-family:inherit;display:block;margin-top:1px}
 .vt-row .tag{display:none;font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.3px;font-weight:600}
 .st{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff}
 .st svg.i{width:13px;height:13px;stroke-width:2.4}
@@ -157,6 +159,8 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .form{padding:4px 6px 4px}
 .form .vt-row{grid-template-columns:150px minmax(0,1fr) minmax(0,1fr)}
 .form .fld{display:block;min-width:0}
+.form .vt-row{align-items:start}
+.form .vt-row .f{padding-top:8px}
 .form input{width:100%;padding:7px 9px;border-radius:8px;border:.5px solid var(--sep);background:var(--card-solid);outline:0;min-width:0}
 .form input:focus{box-shadow:0 0 0 3px rgba(0,122,255,.28);border-color:var(--accent)}
 .form input.ai{background:linear-gradient(0deg,rgba(175,82,222,.08),rgba(175,82,222,.08)),var(--card-solid)}
@@ -328,7 +332,10 @@ async function boot(){
     if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
     if(j.ready){
       state.emails = j.emails; setAI(j.ai);
-      $('#boot').remove(); renderAll(); return;
+      $('#boot').remove(); renderAll();
+      const linked = decodeURIComponent(location.hash.slice(1));      // e.g. /#email_004 opens that email
+      if(state.emails.some(e=>e.id===linked)) select(linked, true);
+      return;
     }
     $('#bootBar').style.width = (100*j.done/j.total)+'%';
     $('#bootMsg').textContent = `${j.done} of ${j.total} emails processed`;
@@ -409,13 +416,17 @@ async function select(id, scroll){
 }
 
 /* ------------------------------------------------ reader */
+/* the exact line of the document a value was read from, with its file and line number */
+function quote(ev){
+  return ev ? `<span class="q" title="${esc(ev.doc)} · line ${ev.line_no}">“${esc(ev.line)}”<i>${esc(ev.doc)} · line ${ev.line_no}</i></span>` : '';
+}
 function tableHtml(rows){
   return `<div class="vt"><div class="vt-row vt-head"><span>Field</span><span>Shipping Instruction</span><span>Draft Bill of Lading</span><span></span></div>` +
     rows.map(r=>{
       const s=show(r.si), b=show(r.bl), icon = r.status==='match'?'check':r.status==='mismatch'?'x':'warn';
       return `<div class="vt-row ${r.status}"><span class="f">${FIELD[r.field]}</span>
-        <span class="v ${s?'':'none'}"><span class="tag">SI</span>${esc(s??'—')}</span>
-        <span class="v ${b?'':'none'}"><span class="tag">BL</span>${esc(b??'—')}</span>
+        <span class="v ${s?'':'none'}"><span class="tag">SI</span>${esc(s??'—')}${quote(r.si_evidence)}</span>
+        <span class="v ${b?'':'none'}"><span class="tag">BL</span>${esc(b??'—')}${quote(r.bl_evidence)}</span>
         <span class="st ${r.status}">${ico(icon)}</span></div>`;
     }).join('') + `</div>`;
 }
@@ -460,8 +471,8 @@ function reviewCard(d){
     <div class="form"><div class="vt-row vt-head colh"><span>Field</span>
       <span>Shipping Instruction<small>${esc(f.si_source)}</small></span><span>Draft Bill of Lading<small>${esc(f.bl_source)}</small></span></div>` +
     d.fields.map(k=>`<div class="vt-row"><span class="f">${FIELD[k]}</span>
-      <label class="fld"><span class="tag">SI · ${esc(f.si_source)}</span><input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}"></label>
-      <label class="fld"><span class="tag">BL · ${esc(f.bl_source)}</span><input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}"></label></div>`).join('') + `</div>`;
+      <label class="fld"><span class="tag">SI · ${esc(f.si_source)}</span><input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}">${quote((f.si_evidence||{})[k])}</label>
+      <label class="fld"><span class="tag">BL · ${esc(f.bl_source)}</span><input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}">${quote((f.bl_evidence||{})[k])}</label></div>`).join('') + `</div>`;
   return `<div class="card">
     ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'')}
     ${ai?`<div class="aibox">${ico('spark')}<div>Gemini read the scan and suggested the highlighted values. It can misread small print, so please confirm each one against the page${ai.would_flag && ai.would_flag.length ? ` (it would flag: ${ai.would_flag.map(x=>FIELD[x]).join(', ')})`:''}.</div></div>`:''}
