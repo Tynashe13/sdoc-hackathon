@@ -72,7 +72,8 @@ class SupabaseStore:
 
     def all(self):
         rows = self._call("GET", "?select=email_id,review") or []
-        return {r["email_id"]: r["review"] for r in rows}
+        return {r["email_id"]: r["review"] for r in rows
+                if isinstance(r, dict) and "email_id" in r and "review" in r}   # skip a malformed row instead of failing
 
     def put(self, eid, review):
         self._call("POST", "?on_conflict=email_id", {"email_id": eid, "review": review},

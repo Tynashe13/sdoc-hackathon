@@ -132,6 +132,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .labtab .x:hover{background:var(--fill2)}
 .labtab.fresh{animation:tabin .28s ease-out}
 @keyframes tabin{from{max-width:0;opacity:0;padding-left:0;padding-right:0;transform:translateX(18px)}to{max-width:150px;opacity:1}}
+.working #recheckBtn,.working #resolveBtn,.working #undoBtn,.working #retryBtn{opacity:.5;pointer-events:none}
 #labBtn.on{background:var(--blue-bg);color:var(--accent)}
 #lab{position:absolute;z-index:6;top:46px;right:0;bottom:0;width:min(560px,100%);display:flex;flex-direction:column;background:var(--card-solid);
   -webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);
@@ -383,12 +384,19 @@ async function api(url, opt){
   return j;
 }
 async function boot(){
+  let failures = 0;
   while(true){
     let j;
-    try{ j = await api('/api/emails'); }
+    try{ j = await api('/api/emails'); failures = 0; }
     catch(e){                                   // e.g. a free host that is still waking up
+      if(++failures > 36){                       // about 90 seconds: stop and say so instead of spinning for ever
+        $('#boot h3').textContent = 'Cannot load the inbox';
+        $('#bootMsg').textContent = e.message + ' Reload the page to try again.';
+        return;
+      }
       $('#boot h3').textContent = 'Waking the server…';
-      $('#bootMsg').textContent = 'A free host sleeps when idle and can take up to a minute to start. Trying again…';
+      $('#bootMsg').textContent = failures < 8 ? 'A free host sleeps when idle and can take up to a minute to start. Trying again…'
+                                               : 'Still trying. This is taking longer than usual.';
       await new Promise(r=>setTimeout(r,2500)); continue;
     }
     if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
@@ -485,12 +493,17 @@ document.addEventListener('keydown', ev=>{
 
 document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && lab.open){ lab.open=false; renderLab(); } });
 
+let selSeq = 0;
 async function select(id, scroll){
+  const my = ++selSeq, before = state.sel;
   if(state.sel !== id) labReset();                                           // closing or switching the email closes its tabs
   state.sel = id; renderList();
   if(scroll) document.querySelector(`.row[data-id="${id}"]`)?.scrollIntoView({block:'nearest'});
-  state.detail = await api('/api/emails/'+id);
-  renderReader(); setView('detail');
+  let d;
+  try{ d = await api('/api/emails/'+id); }
+  catch(e){ if(my === selSeq){ state.sel = before; renderList(); toast(e.message, true); } return; }
+  if(my !== selSeq) return;                                                  // the person already clicked another email
+  state.detail = d; renderReader(); setView('detail');
 }
 
 /* ------------------------------------------------ reader */
@@ -616,12 +629,13 @@ async function labOpen(name, line){
   const id = state.sel; if(!id || !name) return;
   if(!lab.tabs.includes(name)){ lab.tabs.push(name); lab.fresh = name; }     // the newest tab sits next to the button, older ones move left
   Object.assign(lab, {active:name, open:true, focus:line || null});
+  if(lab.data[name] && lab.data[name].failed) delete lab.data[name];           // a failed load is tried again, not remembered
   renderLab();
   if(!lab.data[name]){
     let got;
     try{ got = await api(`/api/emails/${id}/lab/${encodeURIComponent(name)}`); }
-    catch(e){ got = {kind:'error', message:e.message, lines:[], marks:[], download:null}; }
-    if(state.sel !== id) return;                                             // the person moved to another email meanwhile
+    catch(e){ got = {kind:'error', failed:true, message:e.message, lines:[], marks:[], download:null}; }
+    if(state.sel !== id || !lab.tabs.includes(name)) return;                 // the person moved on or closed this tab meanwhile
     lab.data[name] = got; renderLab();
   }
 }
@@ -649,7 +663,7 @@ function renderLab(){
     const worst = ms => ['mismatch','missing','review','match'].find(k => ms.some(m => m.status === k));
     body = d.lines.map((t,i) => { const ms = byLine[i+1];
       return `<div class="ln${ms?' '+worst(ms):''}" data-n="${i+1}"><span class="n">${i+1}</span><span class="t">${esc(t) || ' '}</span>${ms?`<span class="b">${ms.map(m=>esc(m.label)+' · '+m.side).join(', ')}</span>`:''}</div>`; }).join('')
-      + (d.truncated ? '<div class="lab-note">Only the first lines are shown. Download the file to see the rest.</div>' : '')
+      + (d.truncated ? `<div class="lab-note">Only the first lines are shown${d.beyond ? `; ${d.beyond} marked line${d.beyond>1?'s are':' is'} further down` : ''}. Download the file to see the rest.</div>` : '')
       + (d.lines.length ? '' : '<div class="lab-note">This document is empty.</div>');
   }
   const marks = d && d.marks && d.marks.length
@@ -666,13 +680,21 @@ function renderLab(){
 function labGoto(n){ const el = document.querySelector(`#lab .ln[data-n="${n}"]`); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } }
 
 /* ------------------------------------------------ actions */
+let working = false;
 async function act(url, opt, msg){
-  try{ state.detail = await api(url, opt); }
+  if(working) return;                                           // one action at a time: Save then Undo cannot cross over
+  const id = state.sel; working = true; document.body.classList.add('working');
+  let got;
+  try{ got = await api(url, opt); }
   catch(e){ toast(e.message, true); return; }                   // the form stays as it was, so nothing typed is lost
-  renderReader();
-  lab.data = {}; if(lab.open && lab.active) labOpen(lab.active);          // the marks follow the new result
-  try{ await refreshList(); }catch(e){}                         // the change was saved; a failed list refresh is not a failed save
-  toast(state.detail.kept ? 'Gemini is busy, so the saved result was kept.' : msg);
+  finally{ working = false; document.body.classList.remove('working'); }
+  const kept = got.kept ? (got.busy ? 'Gemini is busy, so the saved result was kept.' : 'The AI is not available right now, so the saved result was kept.') : null;
+  if(state.sel === id){                                         // only redraw if the person is still on this email
+    state.detail = got; renderReader();
+    lab.data = {}; if(lab.open && lab.active) labOpen(lab.active);        // the marks follow the new result
+  }
+  toast(kept || msg);
+  refreshList().catch(()=>toast('Saved, but the list could not be refreshed. Reload the page to update the counts.', true));
 }
 const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
 $('#reader').addEventListener('click', ev=>{

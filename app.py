@@ -180,6 +180,8 @@ def attachment_info(eid):
             item.update(error=str(exc), scan=True)
         except ReadError as exc:
             item["error"] = str(exc)
+        except Exception:                                       # an unexpected reader failure must not break the whole email
+            item["error"] = "This document could not be read. Download it to open it yourself."
         out.append(item)
     return out
 
@@ -341,11 +343,13 @@ def api_lab(eid, name):
     except NoTextError:                             # a scan: show the page itself, there is no text to mark
         return jsonify({**out, "kind": "scan", "image": out["download"] + "?render=png",
                         "message": "This is a scanned page, so there are no text lines to mark. Compare the values with the page."})
-    except ReadError:
+    except Exception:                                # ReadError or anything else the reader raises
         return jsonify({**out, "kind": "error", "message": "This document could not be read. Download it to open it yourself."})
     lines = text.splitlines()
-    out.update(lines=lines[:LAB_MAX_LINES], truncated=len(lines) > LAB_MAX_LINES,
-               marks=[m for m in _lab_marks(eid, name) if m["line_no"] <= LAB_MAX_LINES])
+    marks = _lab_marks(eid, name)
+    shown = [m for m in marks if m["line_no"] <= LAB_MAX_LINES]
+    out.update(lines=lines[:LAB_MAX_LINES], truncated=len(lines) > LAB_MAX_LINES, marks=shown,
+               beyond=len(marks) - len(shown))
     return jsonify(out)
 
 
@@ -392,8 +396,9 @@ def api_retry(eid):
     except Exception as exc:                       # keep the saved result and the reviewer's decision
         print(f"[app] retry failed for {eid}: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
         return jsonify({**detail(eid), "kept": True})
-    if len(llm.FAILED) > failed_before and (old.get("ai_assisted") or old.get("ai_consulted")):
-        return jsonify({**detail(eid), "kept": True})
+    busy = len(llm.FAILED) > failed_before
+    if (busy or not llm.enabled()) and (old.get("ai_assisted") or old.get("ai_consulted")):
+        return jsonify({**detail(eid), "kept": True, "busy": busy})     # AI is busy or switched off: keep what it found
     _decide(eid)
     STATE["results"][eid] = new
     return jsonify(detail(eid))

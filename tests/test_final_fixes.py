@@ -50,8 +50,18 @@ print(json.dumps({"kept": d.get("kept"), "ai": d["ai"], "same": app.STATE["resul
 ''')
         self.assertEqual(r, {"kept": True, "ai": True, "same": True, "review": True})
 
+    def test_ai_being_switched_off_keeps_the_saved_ai_result_and_says_so(self):
+        r = run_app_script(PRELUDE + '''
+llm.enabled = lambda: False
+pipeline.process_email = lambda inbox, email: weaker
+d = c.post("/api/emails/email_512/retry").get_json()
+print(json.dumps({"kept": d.get("kept"), "busy": d.get("busy"), "same": app.STATE["results"]["email_512"] is ai_result}))
+''')
+        self.assertEqual(r, {"kept": True, "busy": False, "same": True})
+
     def test_a_working_retry_still_replaces_the_result(self):
         r = run_app_script(PRELUDE + '''
+llm.enabled = lambda: True
 pipeline.process_email = lambda inbox, email: weaker
 d = c.post("/api/emails/email_512/retry").get_json()
 print(json.dumps({"kept": d.get("kept"), "ai": d["ai"], "replaced": app.STATE["results"]["email_512"] is weaker}))

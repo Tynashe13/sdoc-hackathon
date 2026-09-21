@@ -86,11 +86,15 @@ out["list_body"] = c.post(f"/api/emails/{bl}/recheck", json=["x"]).status_code
 out["list_values"] = c.post(f"/api/emails/{bl}/recheck", json={"si": [1], "bl": "x"}).status_code
 out["too_large"] = c.post(f"/api/emails/{eid}/resolve", data="a" * 70000, content_type="application/json").status_code
 out["undo_unknown"] = c.delete("/api/emails/nope/review").status_code
+detail0 = c.get(f"/api/emails/{eid}").get_json()
 r = c.get("/api/emails/nope"); out["not_found"] = [r.status_code, r.get_json()["error"]]
 r = c.put(f"/api/emails/{eid}/resolve", json={}); out["wrong_method"] = [r.status_code, r.get_json()["error"]]
 r = c.post(f"/api/emails/{bl}/recheck", json={}); out["fill_in"] = r.get_json()["error"]
 with mock.patch.object(app, "detail", side_effect=KeyError("secret internal detail")):
     r = c.get(f"/api/emails/{eid}"); out["crash"] = [r.status_code, r.get_json()["error"]]
+with mock.patch.object(app, "read_attachment", side_effect=RuntimeError("odd reader failure")):
+    r = c.get(f"/api/emails/{eid}"); out["reader_crash_detail"] = [r.status_code, bool(r.get_json()["files"][0]["error"])]
+    name0 = detail0["files"][0]["name"]; r = c.get(f"/api/emails/{eid}/lab/{name0}"); out["reader_crash_lab"] = [r.status_code, r.get_json()["kind"]]
 out["note_length"] = len(c.post(f"/api/emails/{eid}/resolve", json={"note": "x" * 5000}).get_json()["review"]["note"])
 c.delete(f"/api/emails/{eid}/review")
 
@@ -170,6 +174,21 @@ class TestAppHardening(unittest.TestCase):
         page = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("statusText", page)                          # would show "BAD REQUEST" / "SERVICE UNAVAILABLE"
         self.assertIn("Cannot reach the server", page)               # instead of "Failed to fetch"
+
+    def test_an_unexpected_reader_failure_does_not_break_the_email_or_the_lab(self):
+        self.assertEqual(self.out["reader_crash_detail"], [200, True])
+        self.assertEqual(self.out["reader_crash_lab"], [200, "error"])
+
+    def test_the_page_never_spins_for_ever_and_ignores_late_replies(self):
+        page = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        for needle in ("Cannot load the inbox", "my !== selSeq", "if(working) return", "lab.tabs.includes(name)", "failed:true"):
+            self.assertIn(needle, page)
+
+    def test_a_malformed_supabase_row_is_skipped(self):
+        import store
+        rows = [{"email_id": "a", "review": {"action": "resolved"}}, {"review": {}}, "junk", {"email_id": "b"}]
+        with mock.patch.object(store.SupabaseStore, "_call", return_value=rows):
+            self.assertEqual(store.SupabaseStore("https://x.supabase.co", "k").all(), {"a": {"action": "resolved"}})
 
     def test_the_csv_cannot_carry_a_formula(self):
         self.assertTrue(self.out["csv_from"].startswith("'="))
