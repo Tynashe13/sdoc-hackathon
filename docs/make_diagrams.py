@@ -8,7 +8,9 @@ RULE = ("#eaf2ff", "#0a5fd6")
 AI = ("#f5eeff", "#7d3cc8")
 HUMAN = ("#fff3e0", "#b85c00")
 OK, BAD, GRAY = ("#e6f6ec", "#1f8a4c"), ("#fdeaea", "#c62828"), ("#f0f0f3", "#6e6e73")
-FONT = "system-ui, 'Segoe UI', Helvetica, Arial, sans-serif"
+# the app's own fonts (Inter, from the same Google Fonts link as static/index.html, then the same fallbacks)
+FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif'
+FONT_CSS = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');"
 
 
 def wrap(text, width, size):
@@ -58,7 +60,7 @@ class Svg:
         defs = "".join(f'<marker id="h-{c[1:]}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" '
                        f'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{c}"/></marker>' for c in colors)
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" '
-               f'font-family="{FONT}"><title>{escape(name)}</title><defs>{defs}</defs>'
+               f'font-family=\'{FONT}\'><title>{escape(name)}</title><style>{escape(FONT_CSS)}</style><defs>{defs}</defs>'
                f'<rect width="{self.w}" height="{self.h}" fill="{BG}"/>' + "".join(self.parts) + "</svg>")
         (OUT / name).write_text(svg)
 
