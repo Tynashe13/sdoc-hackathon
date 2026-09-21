@@ -23,6 +23,8 @@ except ImportError:
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")   # change in .env if AI Studio lists another
 CACHE = Path("/tmp/llm-cache" if os.getenv("VERCEL") else ".cache/llm")   # Vercel's disk is read-only except /tmp
 _client, _tried = None, False
+CALLS = 0            # real requests sent to Gemini so far in this run
+MAX_CALLS = None     # optional cap on those requests: a bad night of retries must not eat the whole daily allowance
 _quota_hit = False   # the key has used up its Gemini allowance: stop asking, every further call would fail too
 FAILED = []          # one entry per call that gave up (busy or broken service), so callers can tell "found nothing" from "unavailable"
 ATTEMPTS = 5        # a busy server (503) usually recovers within a minute
@@ -61,6 +63,7 @@ def enabled() -> bool:
 
 def ask_json(prompt, images=()):
     """One Gemini call that must return JSON.  Cached, retried, never raises."""
+    global CALLS
     client = _get_client()
     if client is None:
         return None
@@ -78,6 +81,12 @@ def ask_json(prompt, images=()):
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
     what = "reading a scanned page" if images else "checking an email"
     for attempt in range(ATTEMPTS):
+        if MAX_CALLS is not None and CALLS >= MAX_CALLS:
+            FAILED.append("request cap reached")
+            print(f"[llm] request cap reached ({MAX_CALLS} requests sent): stopping so the allowance is not used up",
+                  file=sys.stderr, flush=True)
+            return None
+        CALLS += 1
         print(f"[llm] asking Gemini ({what}), try {attempt + 1}/{ATTEMPTS}; it can take up to a minute ...",
               file=sys.stderr, flush=True)
         try:

@@ -44,6 +44,7 @@ unreadable scan, blank value) and **AWAITING** (only the draft BL was requested)
 ## Known limits
 
 - The address after ` | ` in a party name is not compared (only the name), which is how the organisers define a defect.
+- The keyword rules that classify emails were written from this dataset's wording, so a real inbox would need them widened.
 - Scanned pages are not read automatically; with a Gemini key they become a suggestion for a person.
 - Reviewer decisions are stored per email; there is no user login, so this is a demo of the workflow, not a multi-user product.
 - See [`validation/REPORT.md`](../validation/REPORT.md) for what was tested and what was not.

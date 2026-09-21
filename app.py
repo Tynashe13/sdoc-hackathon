@@ -28,6 +28,10 @@ from readers import NoTextError, ReadError, pdf_page_pngs, read_attachment
 DATA_DIR = os.getenv("DATA_DIR", "data")
 RESULTS_FILE = os.getenv("RESULTS_FILE", "results.json")
 
+# A person is waiting on the Retry button, so give up on a busy Gemini quickly (precompute.py keeps the patient defaults)
+llm.ATTEMPTS = int(os.getenv("LLM_ATTEMPTS", "2"))
+llm.TIMEOUT_MS = int(os.getenv("LLM_TIMEOUT_MS", "30000"))
+
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 inbox = Inbox(DATA_DIR)
 EMAILS = {e["email_id"]: e for e in inbox}

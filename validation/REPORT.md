@@ -164,3 +164,4 @@ _Not done yet: no labels in `validation/labels/`. Send `validation/label_packet/
 - Section 3 data is synthetic; a clean score there says little about real forwarded threads and messy scans.
 - Scanned or unreadable documents are sent to a person by design; the AI reading of scans is a suggestion, not a verdict.
 - Only `.txt` documents are rewritten in section 2.
+- The keyword rules that sort emails into kinds were written from the wording of this dataset. The fresh datasets in section 3 come from the same generator, so they share that wording; a real inbox would need the rules widened. The optional AI fallback for emails the rules cannot place exists for that reason, but it has not been measured here.

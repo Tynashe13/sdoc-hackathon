@@ -127,10 +127,16 @@ class TestGeminiOutage(unittest.TestCase):
     and a snapshot must not be built from a run where it failed."""
 
     def setUp(self):
+        import io
+        import sys
         from loader import Inbox
         self.inbox = Inbox("data")
         llm.FAILED.clear()
         self.addCleanup(llm.FAILED.clear)
+        for stream in ("stderr", "stdout"):                       # the simulated failures print warnings; keep the test output clean
+            patcher = mock.patch.object(sys, stream, io.StringIO())
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def failing_ask(self, prompt, images=()):
         llm.FAILED.append("service unavailable")
@@ -204,19 +210,64 @@ class TestGeminiOutage(unittest.TestCase):
         self.assertEqual(llm.FAILED, ["quota exceeded (429)", "quota exceeded (429)"])
 
 
+    def test_the_request_cap_stops_a_bad_night_of_retries(self):
+        import tempfile
+        from pathlib import Path
+
+        class Boom(Exception):
+            code = 503
+
+        class Client:
+            calls = 0
+
+            class models:
+                @staticmethod
+                def generate_content(**kw):
+                    Client.calls += 1
+                    raise Boom("busy")
+
+        with mock.patch.object(llm, "_get_client", return_value=Client), \
+                mock.patch.object(llm, "CACHE", Path(tempfile.mkdtemp())), \
+                mock.patch.object(llm, "CALLS", 0), mock.patch.object(llm, "MAX_CALLS", 3), \
+                mock.patch.object(llm.time, "sleep"):
+            llm.ask_json("one")                                    # 3 attempts used up the cap
+            llm.ask_json("two")                                    # nothing more may be sent
+        self.assertEqual(Client.calls, 3)
+        self.assertIn("request cap reached", llm.FAILED)
+
+    def test_precompute_sets_a_small_cap(self):
+        import precompute
+        import snapshot
+        seen = {}
+
+        def run(data_dir):
+            seen["cap"] = llm.MAX_CALLS
+            return {}
+
+        with mock.patch.object(pipeline, "run", side_effect=run), mock.patch.object(snapshot, "save"), \
+                mock.patch.object(llm, "MAX_CALLS", None), mock.patch.object(llm, "TIMEOUT_MS", llm.TIMEOUT_MS):
+            precompute.main(["--with-ai"])
+        self.assertLessEqual(seen["cap"], 20)
+
+
     def test_precompute_refuses_to_save_an_ai_snapshot_built_during_an_outage(self):
         import precompute
         import snapshot
 
+        seen = {}
+
         def run_with_a_failure(data_dir):
+            seen["timeout"] = llm.TIMEOUT_MS
             llm.FAILED.append("service unavailable")
             return {}
 
         with mock.patch.object(pipeline, "run", side_effect=run_with_a_failure), \
-                mock.patch.object(snapshot, "save") as save:
+                mock.patch.object(snapshot, "save") as save, \
+                mock.patch.object(llm, "TIMEOUT_MS", llm.TIMEOUT_MS):
             code = precompute.main(["--with-ai"])
         self.assertEqual(code, 1)
         save.assert_not_called()
+        self.assertGreaterEqual(seen["timeout"], 120_000)      # the batch build waits patiently for a slow Gemini
 
 
 class TestGeminiClientSettings(unittest.TestCase):
@@ -228,6 +279,19 @@ class TestGeminiClientSettings(unittest.TestCase):
             llm._get_client()
         self.assertEqual(client.call_args.kwargs["http_options"].timeout, llm.TIMEOUT_MS)
         self.assertLessEqual(llm.TIMEOUT_MS, 90_000)
+
+
+class TestInteractiveRetryIsQuick(unittest.TestCase):
+    def test_the_web_app_gives_up_on_a_busy_gemini_quickly_but_precompute_stays_patient(self):
+        import subprocess
+        import sys
+        code = "import llm; import app; print(llm.ATTEMPTS, llm.TIMEOUT_MS)"
+        out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                             env={**__import__("os").environ, "USE_LLM": "0"}).stdout.split()[-2:]
+        attempts, timeout_ms = map(int, out)
+        self.assertLessEqual(attempts, 3)
+        self.assertLessEqual(timeout_ms, 45_000)
+        self.assertGreaterEqual(llm.ATTEMPTS, 5)          # this process never imported app: the batch default is unchanged
 
 
 if __name__ == "__main__":
