@@ -128,13 +128,14 @@ function save(){const who=document.getElementById('who').value.trim()||'anonymou
 
 
 def build(n=60, seed=7, results="results.json", data="data"):
-    res = json.loads(Path(results).read_text())["results"]
+    res = json.loads(Path(results).read_text(encoding="utf-8"))["results"]
     inbox = Inbox(data)
     ids = pick(res, n, seed)
     OUT.mkdir(exist_ok=True)
     (OUT / "packet.html").write_text(PAGE.replace("__N__", str(len(ids)))
-                                     .replace("__ITEMS__", "\n".join(item_html(i, inbox, eid) for i, eid in enumerate(ids))))
-    (OUT / "sample_ids.json").write_text(json.dumps(ids))
+                                     .replace("__ITEMS__", "\n".join(item_html(i, inbox, eid) for i, eid in enumerate(ids))),
+                                     encoding="utf-8")
+    (OUT / "sample_ids.json").write_text(json.dumps(ids), encoding="utf-8")
     return ids
 
 

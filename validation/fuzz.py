@@ -37,7 +37,7 @@ def verdict(field, si, bl):
 
 def load_pairs(results="results.json"):
     """Real (field, si, bl) triples that the system already judged equal."""
-    rows = json.loads(Path(results).read_text())["results"].values()
+    rows = json.loads(Path(results).read_text(encoding="utf-8"))["results"].values()
     seen, out = set(), []
     for res in rows:
         for r in res.get("table") or []:

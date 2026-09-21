@@ -71,7 +71,7 @@ def consensus(labels):
 
 
 def score(paths, results="results.json"):
-    system = {e: system_view(r) for e, r in json.loads(Path(results).read_text())["results"].items()}
+    system = {e: system_view(r) for e, r in json.loads(Path(results).read_text(encoding="utf-8"))["results"].items()}
     labels = read_labels(paths)
     truth, unresolved = consensus(labels)
     rep = {"labellers": {k: len(v) for k, v in labels.items()}, "emails": len(truth), "unresolved": unresolved}

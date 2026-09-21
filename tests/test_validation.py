@@ -10,7 +10,7 @@ from pathlib import Path
 from compare import compare
 from validation import fuzz, fuzz_docs, label_packet, score_labels
 
-RESULTS = json.loads(Path("results.json").read_text())["results"]
+RESULTS = json.loads(Path("results.json").read_text(encoding="utf-8"))["results"]
 
 
 class TestWeightBoundary(unittest.TestCase):
@@ -97,7 +97,7 @@ class TestLabelPacket(unittest.TestCase):
 class TestScoreLabels(unittest.TestCase):
     def write(self, name, rows):
         path = Path(self.tmp.name) / name
-        with open(path, "w", newline="") as f:
+        with open(path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["labeller", "email_id", "category", "verdict", "fields", "reason"])
             w.writerows(rows)

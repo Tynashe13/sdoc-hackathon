@@ -43,7 +43,7 @@ def main(argv):
     saved = HERE / "organiser_scores.json"
     if organiser:
         from validation import organiser as org
-        saved.write_text(json.dumps(org.score(organiser), indent=1))
+        saved.write_text(json.dumps(org.score(organiser), indent=1), encoding="utf-8")
     first_f, first_d = fuzz.run(SEED), fuzz_docs.run(SEED)
     field_rows, doc_rows = first_f["rows"], first_d["rows"]
     docs, pairs = first_d["documents"], first_f["pairs"]
@@ -87,7 +87,7 @@ def main(argv):
 
     L += ["## 3. The organisers' own ground truth", ""]
     if saved.exists():
-        sc = json.loads(saved.read_text())
+        sc = json.loads(saved.read_text(encoding="utf-8"))
         L += ["Rules only, scored with the organisers' scorer on their data and on three fresh datasets from their generator. "
               "These datasets are synthetic and this result is saturated, which is why sections 1 and 2 exist.", "",
               "| Dataset | Emails | Kind of email | Defects caught | False alarms (precision) | Field match | Cases sent to review (recall / precision) | Document checks fully right |",
@@ -126,7 +126,7 @@ def main(argv):
           "- Section 3 data is synthetic; a clean score there says little about real forwarded threads and messy scans.",
           "- Scanned or unreadable documents are sent to a person by design; the AI reading of scans is a suggestion, not a verdict.",
           "- Only `.txt` documents are rewritten in section 2.", ""]
-    (HERE / "REPORT.md").write_text("\n".join(L))
+    (HERE / "REPORT.md").write_text("\n".join(L), encoding="utf-8")
     print(f"wrote {HERE / 'REPORT.md'}")
     for kind, rows in (("field", field_rows), ("document", doc_rows)):
         print(kind, {k: totals(rows, k) for k in sorted({r['kind'] for r in rows})})

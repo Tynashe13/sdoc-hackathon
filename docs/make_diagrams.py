@@ -62,7 +62,7 @@ class Svg:
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" '
                f'font-family=\'{FONT}\'><title>{escape(name)}</title><style>{escape(FONT_CSS)}</style><defs>{defs}</defs>'
                f'<rect width="{self.w}" height="{self.h}" fill="{BG}"/>' + "".join(self.parts) + "</svg>")
-        (OUT / name).write_text(svg)
+        (OUT / name).write_text(svg, encoding="utf-8")
 
 
 def architecture():

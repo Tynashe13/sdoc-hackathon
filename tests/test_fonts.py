@@ -12,7 +12,7 @@ JOE_MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 JOE_LINK = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 ALLOWED = {"var(--font)", "inherit", JOE_BODY, JOE_MONO}
 
-PAGE = Path("static/index.html").read_text()
+PAGE = Path("static/index.html").read_text(encoding="utf-8")
 SIZE = re.compile(r"^(?:(?:italic|oblique|bold|normal|\d{3})\s+)*[\d.]+(?:px|em|rem|%)(?:/[\d.]+(?:px|em|rem|%)?)?\s+(.+)$")
 
 
@@ -44,11 +44,11 @@ class TestFontsAreJoes(unittest.TestCase):
 
     def test_side_documents_use_the_same_fonts(self):
         for path in ("validation/label_packet.py", "docs/make_diagrams.py"):
-            text = Path(path).read_text()
+            text = Path(path).read_text(encoding="utf-8")
             self.assertIn(JOE_BODY, text, path)
             self.assertIn(JOE_LINK, text, path)
         for svg in ("docs/architecture.svg", "docs/deployment.svg"):
-            self.assertIn(JOE_BODY, Path(svg).read_text(), svg)
+            self.assertIn(JOE_BODY, Path(svg).read_text(encoding="utf-8"), svg)
 
 
 if __name__ == "__main__":

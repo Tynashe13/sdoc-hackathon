@@ -45,7 +45,7 @@ class TestEveryQuoteIsVerbatim(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.results = json.loads(Path("results.json").read_text())["results"]
+        cls.results = json.loads(Path("results.json").read_text(encoding="utf-8"))["results"]
         cls.inbox = Inbox(DATA)
         cls.texts = {}
 

@@ -21,7 +21,7 @@ def score(root):
     out = {}
     for name, folder in DATASETS.items():
         src = Path(root) / folder
-        truth = json.loads((src / "ground_truth.json").read_text())
+        truth = json.loads((src / "ground_truth.json").read_text(encoding="utf-8"))
         r = scoring.score_all(truth, json.loads(json.dumps(pipeline.run(str(src)))))
         out[name] = {"emails": r["n_emails"], "kind_accuracy": r["stage1"]["accuracy"],
                      "defect_precision": r["stage3"]["defect_precision"], "defect_recall": r["stage3"]["defect_recall"],

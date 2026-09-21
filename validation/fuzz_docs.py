@@ -124,7 +124,7 @@ def _replace_value(text, field, new):
 def load_docs(data="data", results="results.json"):
     """[(email_id, si_text, bl_text)] for every checked pair that has plain-text attachments."""
     inbox = Inbox(data)
-    res = json.loads(Path(results).read_text())["results"]
+    res = json.loads(Path(results).read_text(encoding="utf-8"))["results"]
     out = []
     for e in inbox:
         r = res.get(e["email_id"], {})

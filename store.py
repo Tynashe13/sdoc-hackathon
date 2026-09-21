@@ -18,14 +18,14 @@ class FileStore:
     def __init__(self, path):
         self.path, self.lock = Path(path), threading.Lock()
         try:
-            self.data = json.loads(self.path.read_text())
+            self.data = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             self.data = {}
 
     def _flush(self):
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(self.data, indent=2))
+            self.path.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
         except OSError:                      # read-only disk: keep working from memory
             pass
 
