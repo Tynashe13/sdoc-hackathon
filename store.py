@@ -14,6 +14,10 @@ import urllib.request
 from pathlib import Path
 
 
+class StoreError(Exception):
+    """The reviews database could not be reached or refused the request."""
+
+
 class FileStore:
     def __init__(self, path):
         self.path, self.lock = Path(path), threading.Lock()
@@ -59,13 +63,17 @@ class SupabaseStore:
             headers["Prefer"] = prefer
         req = urllib.request.Request(self.base + query, method=method, headers=headers,
                                      data=json.dumps(body).encode() if body is not None else None)
-        with urllib.request.urlopen(req, timeout=8) as r:
-            raw = r.read()
-        return json.loads(raw) if raw else None
+        try:
+            with urllib.request.urlopen(req, timeout=8) as r:
+                raw = r.read()
+            return json.loads(raw) if raw else None
+        except (OSError, ValueError) as exc:          # URLError, HTTPError and timeouts are all OSErrors
+            raise StoreError(f"{type(exc).__name__}: {exc}") from exc
 
     def all(self):
         rows = self._call("GET", "?select=email_id,review") or []
-        return {r["email_id"]: r["review"] for r in rows}
+        return {r["email_id"]: r["review"] for r in rows
+                if isinstance(r, dict) and "email_id" in r and "review" in r}   # skip a malformed row instead of failing
 
     def put(self, eid, review):
         self._call("POST", "?on_conflict=email_id", {"email_id": eid, "review": review},

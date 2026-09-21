@@ -50,9 +50,9 @@ svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 #reader{background:var(--read);display:flex;flex-direction:column;min-height:0;min-width:0;position:relative}
 
 /* ---------- sidebar ---------- */
-.traffic{display:flex;gap:8px;padding:14px 16px 6px}
-.traffic i{width:12px;height:12px;border-radius:50%;display:block;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18)}
-.traffic i:nth-child(1){background:#ff5f57}.traffic i:nth-child(2){background:#febc2e}.traffic i:nth-child(3){background:#28c840}
+.brand{padding:18px 16px 4px}
+.brand b{display:block;font-size:17px;font-weight:700;letter-spacing:-.3px;line-height:1.2;white-space:nowrap}
+.brand span{display:block;font-size:11.5px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-scroll{flex:1;overflow:auto;padding:6px 10px 10px}
 .side-h{font-size:11px;font-weight:600;color:var(--text2);padding:14px 10px 4px}
 .nav{display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:8px;font-size:13px;text-align:left;color:var(--text)}
@@ -98,6 +98,7 @@ a.btn{text-decoration:none;color:var(--text)}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--fill);color:var(--text2)}
 .chip.red{background:var(--red-bg);color:var(--red)}.chip.green{background:var(--green-bg);color:var(--green)}
 .chip.orange{background:var(--orange-bg);color:#c66f00}.chip.blue{background:var(--blue-bg);color:var(--accent)}
+.aiwhy{display:flex;gap:7px;margin-top:9px;font-size:12.5px;line-height:1.45}.aiwhy svg.i{color:#af52de;flex:none;margin-top:2px}
 .aitag{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:0 6px;border-radius:10px;background:rgba(175,82,222,.18);color:#af52de;vertical-align:middle;letter-spacing:.3px}
 @media (prefers-color-scheme:dark){.chip.orange{color:var(--orange)}}
 .row.sel .chip{background:rgba(255,255,255,.24);color:#fff}
@@ -119,6 +120,46 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .file{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border-radius:10px;background:var(--fill);font-size:12.5px;color:var(--text);text-decoration:none}
 .file:hover{background:var(--fill2)}
 .file .ext{font-size:10px;font-weight:700;letter-spacing:.4px;background:var(--card-solid);border-radius:4px;padding:1px 5px;color:var(--text2)}
+/* Test lab: the documents an email came with, opened as tabs beside a slide-out reader with the source lines marked */
+.labtabs{display:flex;justify-content:flex-end;gap:6px;min-width:0;flex:0 1 62%;overflow:hidden}
+.labtab{display:inline-flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;max-width:150px;padding:4px 6px 4px 10px;border-radius:8px;
+  background:var(--fill);color:var(--text2);font-size:12px;white-space:nowrap}
+.labtab span.nm{overflow:hidden;text-overflow:ellipsis}
+.labtab:hover{background:var(--fill2);color:var(--text)}
+.labtab.active{background:var(--blue-bg);color:var(--accent)}
+.labtab .x{display:inline-grid;place-items:center;width:0;height:16px;border-radius:50%;opacity:0;overflow:hidden;font-size:14px;line-height:1;transition:width .15s,opacity .15s}
+.labtab:hover .x,.labtab.active .x{width:16px;opacity:1}
+.labtab .x:hover{background:var(--fill2)}
+.labtab.fresh{animation:tabin .28s ease-out}
+@keyframes tabin{from{max-width:0;opacity:0;padding-left:0;padding-right:0;transform:translateX(18px)}to{max-width:150px;opacity:1}}
+.working #recheckBtn,.working #resolveBtn,.working #undoBtn,.working #retryBtn{opacity:.5;pointer-events:none}
+#labBtn.on{background:var(--blue-bg);color:var(--accent)}
+#lab{position:absolute;z-index:6;top:46px;right:0;bottom:0;width:min(560px,100%);display:flex;flex-direction:column;background:var(--card-solid);
+  -webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);
+  border-left:.5px solid var(--sep);box-shadow:-18px 0 40px rgba(0,0,0,.22);transform:translateX(105%);visibility:hidden;transition:transform .28s ease,visibility 0s .28s}
+#lab.open{transform:none;visibility:visible;transition:transform .28s ease}
+.lab-h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:.5px solid var(--sep)}
+.lab-h b{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-h a,.lab-h button{color:var(--text2);font-size:12.5px;text-decoration:none;padding:4px 8px;border-radius:8px}
+.lab-h a:hover,.lab-h button:hover{background:var(--hover);color:var(--text)}
+.labdocs{display:none;gap:6px;padding:8px 16px 0;overflow-x:auto}
+.labmarks{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px 6px}
+.labmarks button{cursor:pointer}
+.lab-note{padding:10px 16px;color:var(--text2);font-size:12.5px}
+.lab-body{flex:1;overflow:auto;padding:6px 0 30px}
+.lab-body img{display:block;max-width:calc(100% - 32px);margin:10px 16px;border-radius:8px}
+.ln{display:flex;gap:10px;padding:2px 16px;align-items:baseline;border-left:3px solid transparent;font-size:12.5px;line-height:1.5}
+.ln .n{flex:none;width:26px;text-align:right;color:var(--text3);font-variant-numeric:tabular-nums;user-select:none}
+.ln .t{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ln .b{flex:none;font-size:10.5px;font-weight:600;padding:0 7px;border-radius:20px;background:var(--fill);color:var(--text2)}
+.ln.match{background:var(--green-bg);border-left-color:var(--green)}
+.ln.mismatch{background:var(--red-bg);border-left-color:var(--red)}
+.ln.missing,.ln.review{background:var(--orange-bg);border-left-color:var(--orange)}
+.ln.flash{animation:flash 1.4s ease-out}
+@keyframes flash{from{box-shadow:inset 0 0 0 2px var(--accent)}to{box-shadow:inset 0 0 0 2px transparent}}
+.vt-row .q[data-lab]{cursor:pointer}.vt-row .q[data-lab]:hover,.fld .q[data-lab]:hover{color:var(--accent)}
+.fld .q[data-lab]{cursor:pointer}
+@media (prefers-reduced-motion:reduce){.labtab.fresh,.ln.flash{animation:none}#lab,#lab.open{transition:none}}
 .card{margin-top:18px;border-radius:14px;background:var(--card);border:.5px solid var(--sep);box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
 .banner{display:flex;gap:12px;align-items:flex-start;padding:16px 18px}
 .banner .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff}
@@ -186,6 +227,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .bar{height:6px;border-radius:6px;background:var(--fill2);overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .4s}
 #toast{position:fixed;z-index:9;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;padding:10px 16px;border-radius:12px;background:rgba(30,30,34,.86);color:#fff;font-size:13px;pointer-events:none;transition:.25s;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.problem{background:rgba(120,34,34,.94);max-width:min(92vw,460px);text-align:center;line-height:1.4}
 
 /* ---------- smaller laptop windows: slimmer columns so the comparison table keeps its room ---------- */
 @media (max-width:1360px){
@@ -202,7 +244,14 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
   #sidebar,#list,#reader{position:absolute;inset:0;width:100%;border:0}
   #app[data-view="boxes"] #list,#app[data-view="boxes"] #reader,#app[data-view="list"] #sidebar,#app[data-view="list"] #reader,
   #app[data-view="detail"] #sidebar,#app[data-view="detail"] #list{display:none}
-  .traffic{display:none}
+  .brand{padding:18px 22px 0}
+  .labtabs{display:none}
+  #lab{top:0;width:100%;z-index:8}
+  .labdocs{display:flex}
+  .lab-h a,.lab-h button{min-height:44px;display:inline-flex;align-items:center;padding:0 12px}
+  .labdocs .labtab{min-height:36px;padding:0 12px;font-size:13px}
+  .labmarks{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}
+  .labmarks button{min-height:32px;flex:none}
   #sidebar{padding-top:env(safe-area-inset-top)}
   .side-scroll{padding:24px 16px}
   .side-scroll:before{content:"Mailboxes";display:block;font-size:32px;font-weight:700;letter-spacing:-.5px;margin-bottom:10px;padding-left:6px}
@@ -233,7 +282,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 <div id="wall"></div>
 <div id="app" data-view="list">
   <aside id="sidebar" class="glass">
-    <div class="traffic"><i></i><i></i><i></i></div>
+    <div class="brand"><b>SDOC Check</b><span>Shipping document verification</span></div>
     <div class="side-scroll" id="nav"></div>
     <div class="side-foot">
       <div class="pill-ai" id="aipill"><b></b><span>AI status…</span></div>
@@ -252,15 +301,19 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
     <div class="toolbar">
       <button class="back" id="backList"><svg class="i" style="width:20px;height:20px"><use href="#i-chev"/></svg><span id="backLabel">Inbox</span></button>
       <span class="sp"></span>
+      <div class="labtabs" id="labtabs"></div>
+      <button class="icon-btn" id="labBtn" style="display:none" title="Open the documents with the source lines marked" aria-expanded="false"><svg class="i"><use href="#i-lab"/></svg>Test lab</button>
       <button class="icon-btn" id="retryBtn" style="display:none" title="Run the check again"><svg class="i"><use href="#i-retry"/></svg>Retry</button>
     </div>
     <div class="reader-scroll" id="reader-body"></div>
+    <aside id="lab" aria-label="Test lab"></aside>
     <div id="boot"><div class="box"><h3>Reading the inbox…</h3><p id="bootMsg">Classifying emails and comparing documents</p><div class="bar"><i id="bootBar"></i></div></div></div>
   </main>
 </div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <svg width="0" height="0" style="position:absolute">
+  <symbol id="i-lab" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L5 19a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 19l-5-10V3"/><path d="M7.5 15h9"/></symbol>
   <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13l2-6.5A2 2 0 0 1 7.9 5h8.2A2 2 0 0 1 18 6.5L20 13"/><path d="M4 13v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4h-4.5a3.5 3.5 0 0 1-7 0z"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.3v.01"/></symbol>
@@ -307,6 +360,7 @@ const BOXES = [
   {id:'review', label:'Needs review', icon:'eye', test:e=>e.status==='NEEDS_REVIEW', hot:e=>e.status==='NEEDS_REVIEW'&&!e.resolved},
   {id:'mismatch', label:'Mismatches', icon:'warn', test:e=>e.status==='MISMATCH'},
   {id:'ok', label:'No mismatch', icon:'checkc', test:e=>e.category==='BL_COMPARISON'&&e.status==='OK'&&!e.awaiting},
+  {id:'awaiting', label:'Awaiting draft BL', icon:'clock', test:e=>e.awaiting, note:'The sender only asked for the draft BL, so there is nothing to compare yet.'},
   {id:'checks', label:'All document checks', icon:'doc', test:e=>e.category==='BL_COMPARISON'},
   {group:'Other mail'},
   {id:'si', label:'New SI requests', icon:'newdoc', test:e=>e.category==='SI_REQUEST'},
@@ -317,25 +371,42 @@ const BOXES = [
 const state = {emails:[], box:'all', q:'', sel:null, detail:null};
 
 /* ------------------------------------------------ data */
+const PLAIN = {
+  400:'Something in that request was not right. Check the values and try again.',
+  404:'That email could not be found. Refresh the page and try again.',
+  413:'That is too long. Shorten the note or the values and try again.',
+  429:'Too many requests at once. Wait a moment and try again.',
+  503:'The service is busy right now. Nothing was changed. Try again in a moment.'};
+const WRONG = 'Something went wrong on our side. Nothing was changed. Try again in a moment.';
+const OFFLINE = 'Cannot reach the server. Check your internet connection and try again.';
 async function api(url, opt){
-  const r = await fetch(url, opt);
+  let r;
+  try{ r = await fetch(url, opt); }
+  catch(e){ throw new Error(OFFLINE); }                        // never show "Failed to fetch"
   const j = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(j.error || r.statusText);
+  if(!r.ok) throw new Error(j.error || PLAIN[r.status] || WRONG);   // never show a status code or "BAD REQUEST"
   return j;
 }
 async function boot(){
+  let failures = 0;
   while(true){
     let j;
-    try{ j = await api('/api/emails'); }
+    try{ j = await api('/api/emails'); failures = 0; }
     catch(e){                                   // e.g. a free host that is still waking up
+      if(++failures > 36){                       // about 90 seconds: stop and say so instead of spinning for ever
+        $('#boot h3').textContent = 'Cannot load the inbox';
+        $('#bootMsg').textContent = e.message + ' Reload the page to try again.';
+        return;
+      }
       $('#boot h3').textContent = 'Waking the server…';
-      $('#bootMsg').textContent = 'A free host sleeps when idle and can take up to a minute to start. Trying again…';
+      $('#bootMsg').textContent = failures < 8 ? 'A free host sleeps when idle and can take up to a minute to start. Trying again…'
+                                               : 'Still trying. This is taking longer than usual.';
       await new Promise(r=>setTimeout(r,2500)); continue;
     }
     if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
     if(j.ready){
       state.emails = j.emails; setAI(j.ai);
-      $('#boot').remove(); renderAll();
+      $('#boot').remove(); renderAll(); noteReviewsDown(j);
       const linked = decodeURIComponent(location.hash.slice(1));      // e.g. /#email_004 opens that email
       if(state.emails.some(e=>e.id===linked)) select(linked, true);
       return;
@@ -349,7 +420,17 @@ function setAI(on){
   const p=$('#aipill'); p.className='pill-ai'+(on?' on':'');
   p.querySelector('span').textContent = on ? 'Gemini AI connected' : 'AI off · rules only';
 }
-async function refreshList(){ const j = await api('/api/emails'); state.emails = j.emails; renderSidebar(); renderList(); }
+async function refreshList(){
+  const j = await api('/api/emails'); state.emails = j.emails; renderSidebar(); renderList(); noteReviewsDown(j);
+}
+let warnedReviews = false;
+function noteReviewsDown(j){                                    // the inbox still works when saved decisions cannot load
+  if(j.reviews_available === false && !warnedReviews){
+    warnedReviews = true;
+    toast('Saved decisions cannot be loaded right now. You can still read every result, but changes may not save.', true);
+  }
+  if(j.reviews_available !== false) warnedReviews = false;
+}
 
 /* ------------------------------------------------ helpers */
 const attention = e => (e.status==='MISMATCH' && !e.human) || (e.status==='NEEDS_REVIEW' && !e.resolved);
@@ -367,7 +448,10 @@ function visible(){
   const box = BOXES.find(b=>b.id===state.box), q = state.q.trim().toLowerCase();
   return state.emails.filter(e => box.test(e) && (!q || (e.name+' '+e.from+' '+e.subject+' '+e.preview+' '+e.id).toLowerCase().includes(q)));
 }
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(msg, problem){
+  const t=$('#toast'); t.textContent=msg; t.classList.toggle('problem', !!problem); t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), problem ? 7000 : 2600);   // a problem stays long enough to read
+}
 const setView = v => $('#app').dataset.view = v;
 
 /* ------------------------------------------------ sidebar */
@@ -388,7 +472,7 @@ $('#nav').addEventListener('click', ev=>{
 function renderList(){
   const box = BOXES.find(b=>b.id===state.box), list = visible();
   $('#listTitle').textContent = box.label;
-  $('#listSub').textContent = `${list.length} message${list.length===1?'':'s'}`;
+  $('#listSub').textContent = `${list.length} message${list.length===1?'':'s'}` + (box.note ? ' · ' + box.note : '');
   $('#backLabel').textContent = box.label;
   $('#rows').innerHTML = list.length ? list.map(e=>{
     const [c, t] = chip(e);
@@ -403,7 +487,7 @@ function renderList(){
 $('#rows').addEventListener('click', ev=>{ const r=ev.target.closest('[data-id]'); if(r) select(r.dataset.id); });
 $('#q').addEventListener('input', ev=>{ state.q=ev.target.value; renderList(); });
 $('#backBoxes').onclick = ()=>setView('boxes');
-$('#backList').onclick = ()=>setView('list');
+$('#backList').onclick = ()=>{ labReset(); setView('list'); };
 document.addEventListener('keydown', ev=>{
   if(!['ArrowDown','ArrowUp'].includes(ev.key) || ['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
   const list = visible(); if(!list.length) return;
@@ -411,17 +495,29 @@ document.addEventListener('keydown', ev=>{
   ev.preventDefault(); select(list[i].id, true);
 });
 
+document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && lab.open){ lab.open=false; renderLab(); } });
+
+let selSeq = 0;
 async function select(id, scroll){
+  const my = ++selSeq, before = state.sel;
+  if(state.sel !== id) labReset();                                           // closing or switching the email closes its tabs
   state.sel = id; renderList();
   if(scroll) document.querySelector(`.row[data-id="${id}"]`)?.scrollIntoView({block:'nearest'});
-  state.detail = await api('/api/emails/'+id);
-  renderReader(); setView('detail');
+  let d;
+  try{ d = await api('/api/emails/'+id); }
+  catch(e){ if(my === selSeq){ state.sel = before; renderList(); toast(e.message, true); } return; }
+  if(my !== selSeq) return;                                                  // the person already clicked another email
+  state.detail = d; renderReader(); setView('detail');
 }
 
 /* ------------------------------------------------ reader */
+/* the plain-language reason written by Gemini for this case (the verdict itself comes from the rules) */
+function whyHtml(d){
+  return d.ai_explanation ? `<div class="aiwhy">${ico('spark')}<div><b>In plain words:</b> ${esc(d.ai_explanation)} <span class="aitag" title="Written by Gemini (AI) from the two values; it did not decide the verdict">AI</span></div></div>` : '';
+}
 /* the exact line of the document a value was read from, with its file and line number */
 function quote(ev){
-  return ev ? `<span class="q" title="${esc(ev.doc)} · line ${ev.line_no}">“${esc(ev.line)}”<i>${esc(ev.doc)} · line ${ev.line_no}</i></span>` : '';
+  return ev ? `<span class="q" data-lab="${esc(ev.doc)}" data-line="${ev.line_no}" title="${esc(ev.doc)} · line ${ev.line_no}. Click to open it in the Test lab">“${esc(ev.line)}”<i>${esc(ev.doc)} · line ${ev.line_no}</i></span>` : '';
 }
 function tableHtml(rows){
   return `<div class="vt"><div class="vt-row vt-head"><span>Field</span><span>Shipping Instruction</span><span>Draft Bill of Lading</span><span></span></div>` +
@@ -456,7 +552,7 @@ function verifyCard(d){
   const head = d.status==='OK'
     ? banner('green','check','No mismatch detected','All seven fields agree between the Shipping Instruction and the draft Bill of Lading.')
     : banner('red','warn',`${bad.length} mismatch${bad.length>1?'es':''} found`, 'Fix these on the draft Bill of Lading before it is finalised.',
-        `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>`);
+        `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>` + whyHtml(d));
   return `<div class="card">${head}${tableHtml(rows)}${reviewedFooter(d)}</div>`;
 }
 /* shown on every email where Gemini contributed: what it did, and that it can be wrong */
@@ -467,6 +563,7 @@ function aiDisclaimer(d){
   const found = (d.table||[]).some(r=>r.si_ai||r.bl_ai);
   const closing = found ? `Values it found are marked <span class="aitag" style="margin:0">AI</span>. Check them against the quoted source line, or the document, before relying on them.`
     : d.ai_suggestion ? 'Check the suggested values against the scanned page before relying on them.'
+    : d.ai_explanation ? 'The verdict comes from the rules; the explanation only summarises the values shown above, so check it against them.'
     : 'Check it against the email before relying on it.';
   return `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>
     <b>AI-assisted.</b> Part of this result was produced with help from Gemini (AI), which can make mistakes.
@@ -499,7 +596,7 @@ function reviewCard(d){
       <label class="fld"><span class="tag">SI · ${esc(f.si_source)}</span><input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}">${quote((f.si_evidence||{})[k])}</label>
       <label class="fld"><span class="tag">BL · ${esc(f.bl_source)}</span><input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}">${quote((f.bl_evidence||{})[k])}</label></div>`).join('') + `</div>`;
   return `<div class="card">
-    ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'')}
+    ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', (d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'') + whyHtml(d))}
     ${ai?`<div class="aibox">${ico('spark')}<div>Gemini read the scan and suggested the highlighted values. It can misread small print, so please confirm each one against the page${ai.would_flag && ai.would_flag.length ? ` (it would flag: ${ai.would_flag.map(x=>FIELD[x]).join(', ')})`:''}.</div></div>`:''}
     ${evidenceHtml(d)}${inputs}
     <div class="note"><textarea id="note" placeholder="Reviewer note (optional)"></textarea></div>
@@ -512,6 +609,7 @@ function reviewCard(d){
 function renderReader(){
   const d = state.detail, el = $('#reader-body');
   $('#retryBtn').style.display = d && d.category==='BL_COMPARISON' ? '' : 'none';
+  $('#labBtn').style.display = d && d.files.length ? '' : 'none';
   if(!d){ el.innerHTML = `<div class="blank" style="height:100%"><div>${ico('mail')}<div>No Message Selected</div></div></div>`; return; }
   const [c,t] = chip(d);
   el.innerHTML = `
@@ -519,7 +617,7 @@ function renderReader(){
       <div class="rd-from"><b>${esc(d.name)}</b><span>${esc(d.from)}</span></div></div>
     <h2 class="subject">${esc(d.subject)}</h2>
     <div class="meta"><span class="chip ${c}">${esc(t)}</span><span class="chip">${esc(d.id)}</span>${d.ai?`<span class="chip blue">${ico('spark')} AI-assisted</span>`:''}</div>
-    ${d.files.length?`<div class="files">${d.files.map(f=>`<a class="file" href="/api/attachment/${d.id}/${encodeURIComponent(f.name)}">${ico('clip')}<span>${esc(f.name)}</span><span class="ext">${esc(f.ext)}</span></a>`).join('')}</div>`:''}
+    ${d.files.length?`<div class="files">${d.files.map(f=>`<a class="file" data-lab="${esc(f.name)}" title="Open in the Test lab" href="/api/attachment/${d.id}/${encodeURIComponent(f.name)}">${ico('clip')}<span>${esc(f.name)}</span><span class="ext">${esc(f.ext)}</span></a>`).join('')}</div>`:''}
     ${verifyCard(d)}
     ${d.ai ? aiDisclaimer(d) : ''}
     ${d.ai_consulted && d.ai_consulted.length ? consultedNote(d) : ''}
@@ -527,14 +625,95 @@ function renderReader(){
   el.scrollTop = 0;
 }
 
+/* ------------------------------------------------ Test lab */
+const lab = {tabs:[], active:null, open:false, data:{}, focus:null, fresh:null};
+const labLabel = n => n.replace(/^email_\d+_/, '');
+function labReset(){ Object.assign(lab, {tabs:[], active:null, open:false, data:{}, focus:null, fresh:null}); renderLab(); }
+async function labOpen(name, line){
+  const id = state.sel; if(!id || !name) return;
+  if(!lab.tabs.includes(name)){ lab.tabs.push(name); lab.fresh = name; }     // the newest tab sits next to the button, older ones move left
+  Object.assign(lab, {active:name, open:true, focus:line || null});
+  if(lab.data[name] && lab.data[name].failed) delete lab.data[name];           // a failed load is tried again, not remembered
+  renderLab();
+  if(!lab.data[name]){
+    let got;
+    try{ got = await api(`/api/emails/${id}/lab/${encodeURIComponent(name)}`); }
+    catch(e){ got = {kind:'error', failed:true, message:e.message, lines:[], marks:[], download:null}; }
+    if(state.sel !== id || !lab.tabs.includes(name)) return;                 // the person moved on or closed this tab meanwhile
+    lab.data[name] = got; renderLab();
+  }
+}
+function labClose(name){
+  lab.tabs = lab.tabs.filter(t => t !== name); delete lab.data[name];
+  if(lab.active === name){ lab.active = lab.tabs[lab.tabs.length-1] || null; lab.focus = null; }
+  if(!lab.active) lab.open = false;
+  renderLab();
+}
+function renderLab(){
+  const strip = $('#labtabs'), panel = $('#lab'), btn = $('#labBtn');
+  strip.innerHTML = lab.tabs.map(n => `<button class="labtab${n===lab.active&&lab.open?' active':''}${n===lab.fresh?' fresh':''}" data-tab="${esc(n)}" title="${esc(n)}"><span class="nm">${esc(labLabel(n))}</span><span class="x" data-close="${esc(n)}" role="button" aria-label="Close ${esc(n)}">×</span></button>`).join('');
+  lab.fresh = null;                                                          // only the first draw of a new tab slides in
+  btn.classList.toggle('on', lab.open); btn.setAttribute('aria-expanded', lab.open);
+  panel.classList.toggle('open', lab.open);
+  if(!lab.open || !lab.active) return;
+  const name = lab.active, d = lab.data[name];
+  const docs = lab.tabs.map(n => `<button class="labtab${n===name?' active':''}" data-tab="${esc(n)}">${esc(labLabel(n))}</button>`).join('');
+  let body;
+  if(!d) body = '<div class="lab-note">Opening the document…</div>';
+  else if(d.kind === 'scan') body = `<div class="lab-note">${esc(d.message)}</div><img src="${d.image}" alt="Scanned page of ${esc(name)}">`;
+  else if(d.kind === 'error') body = `<div class="lab-note">${esc(d.message)}</div>`;
+  else{
+    const byLine = {}; d.marks.forEach(m => (byLine[m.line_no] = byLine[m.line_no] || []).push(m));
+    const worst = ms => ['mismatch','missing','review','match'].find(k => ms.some(m => m.status === k));
+    body = d.lines.map((t,i) => { const ms = byLine[i+1];
+      return `<div class="ln${ms?' '+worst(ms):''}" data-n="${i+1}"><span class="n">${i+1}</span><span class="t">${esc(t) || ' '}</span>${ms?`<span class="b">${ms.map(m=>esc(m.label)+' · '+m.side).join(', ')}</span>`:''}</div>`; }).join('')
+      + (d.truncated ? `<div class="lab-note">Only the first lines are shown${d.beyond ? `; ${d.beyond} marked line${d.beyond>1?'s are':' is'} further down` : ''}. Download the file to see the rest.</div>` : '')
+      + (d.lines.length ? '' : '<div class="lab-note">This document is empty.</div>');
+  }
+  const marks = d && d.marks && d.marks.length
+    ? `<div class="labmarks">${d.marks.map(m => `<button class="chip ${m.status==='mismatch'?'red':m.status==='match'?'green':'orange'}" data-goto="${m.line_no}" title="Line ${m.line_no}">${esc(m.label)} · ${m.side} · line ${m.line_no}</button>`).join('')}</div>`
+    : (d && d.kind === 'text' ? '<div class="lab-note">No compared value was read from this document.</div>' : '');
+  panel.innerHTML = `<div class="lab-h"><b title="${esc(name)}">${esc(name)}</b>${d && d.download ? `<a href="${d.download}">Download</a>` : ''}<button id="labClose" aria-label="Close the Test lab">Close</button></div>
+    <div class="labdocs">${docs}</div>${marks}<div class="lab-body" id="labBody">${body}</div>`;
+  if(d && d.kind === 'text'){
+    const target = lab.focus || (d.marks[0] && d.marks[0].line_no);
+    const el = target && panel.querySelector(`.ln[data-n="${target}"]`);
+    if(el){ el.scrollIntoView({block:'center'}); if(lab.focus){ el.classList.add('flash'); lab.focus = null; } }
+  }
+}
+function labGoto(n){ const el = document.querySelector(`#lab .ln[data-n="${n}"]`); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } }
+
 /* ------------------------------------------------ actions */
+let working = false;
 async function act(url, opt, msg){
-  try{ state.detail = await api(url, opt); renderReader(); await refreshList(); toast(msg); }
-  catch(e){ toast(e.message); }
+  if(working) return;                                           // one action at a time: Save then Undo cannot cross over
+  const id = state.sel; working = true; document.body.classList.add('working');
+  let got;
+  try{ got = await api(url, opt); }
+  catch(e){ toast(e.message, true); return; }                   // the form stays as it was, so nothing typed is lost
+  finally{ working = false; document.body.classList.remove('working'); }
+  const kept = got.kept ? (got.busy ? 'Gemini is busy, so the saved result was kept.' : 'The AI is not available right now, so the saved result was kept.') : null;
+  if(state.sel === id){                                         // only redraw if the person is still on this email
+    state.detail = got; renderReader();
+    lab.data = {}; if(lab.open && lab.active) labOpen(lab.active);        // the marks follow the new result
+  }
+  toast(kept || msg);
+  refreshList().catch(()=>toast('Saved, but the list could not be refreshed. Reload the page to update the counts.', true));
 }
 const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
 $('#reader').addEventListener('click', ev=>{
   const id = state.sel; if(!id) return;
+  const closer = ev.target.closest('[data-close]'); if(closer){ ev.stopPropagation(); labClose(closer.dataset.close); return; }
+  const tab = ev.target.closest('[data-tab]'); if(tab){ labOpen(tab.dataset.tab); return; }
+  const opener = ev.target.closest('[data-lab]'); if(opener){ ev.preventDefault(); labOpen(opener.dataset.lab, +opener.dataset.line || null); return; }
+  const go = ev.target.closest('[data-goto]'); if(go){ labGoto(go.dataset.goto); return; }
+  if(ev.target.closest('#labClose')){ lab.open = false; renderLab(); return; }
+  if(ev.target.closest('#labBtn')){
+    if(lab.open){ lab.open = false; renderLab(); }
+    else if(lab.active || lab.tabs.length){ labOpen(lab.active || lab.tabs[0]); }
+    else if(state.detail && state.detail.files.length){ labOpen(state.detail.files[0].name); }
+    return;
+  }
   if(ev.target.closest('#recheckBtn')){
     const si={}, bl={};
     document.querySelectorAll('.form input').forEach(i => (i.dataset.side==='si'?si:bl)[i.dataset.f] = i.value);

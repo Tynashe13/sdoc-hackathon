@@ -6,6 +6,8 @@ a person, with the evidence in front of them. Built for the Averis x Monash Hack
 
 **Live demo: https://sdoc-hackathon.vercel.app** (works on a phone; no login)
 
+**One-page overview (PDF):** [docs/SDOC-Check-Overview.pdf](docs/SDOC-Check-Overview.pdf)
+
 ![How one email becomes a verdict](docs/architecture.png)
 
 ## Try it in two minutes
@@ -21,7 +23,22 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 | `email_501` | Wrong document: the "BL" attachment is really an invoice |
 | `email_512`, `513`, `514` | Scanned pages: read by Gemini as a *suggestion*, tagged **AI-assisted**, with a disclaimer |
 | `email_519`, `520` | Blank values: Gemini was asked and found nothing, so a grey note says so |
+| Any quoted line | Click it, or an attachment, to open the **Test lab**: the whole document with the line each value was read from marked green, red or amber |
 
+
+## What was measured
+
+| | |
+|---|---|
+| Emails in the demo inbox | 520 (220 document checks: 63 clean, 46 mismatch, 20 for review, 91 waiting for the draft BL) |
+| Field fuzzer | 1,274 formatting-only changes still match, 1,572 real defects caught, 988 blanked values sent to a person |
+| Document fuzzer | 890 layout changes keep their verdict; unfamiliar wording is always escalated (267 of 267); 1,948 injected defects found in the right field |
+| Organisers' ground truth | 100% on the given data and three freshly generated datasets (synthetic, so this is saturated: the fuzzers are the harder test) |
+| A real bug found by the fuzzers | Weights 1 kg apart counted as equal. Fixed and covered by a test |
+| Automated tests | 120 |
+
+Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.md). The team-labelled sample
+(60 emails labelled by hand, blind to the system) is built but not yet labelled, and the report says so.
 
 ## How it decides
 
@@ -33,9 +50,39 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 - **Gemini is optional and guarded.** It can classify an email the rules cannot place, fill a missing field only if
   it quotes a line that really is in the document, and read a scanned page as a suggestion. Anything it touches is
   tagged, carries a disclaimer, and needs a person to confirm it.
+- **Gemini writes the plain-language reason** for every mismatch and every case that needs review
+  (`python explain.py`, about three requests; all 66 cases in the demo inbox have one in `explanations.json`).
+  It is given only the compared values, is never asked to decide, and its sentence is kept only if it mentions the
+  values it explains. It is tagged `AI`, appears in the app and in the CSV report, and disappears if a person
+  corrects the case. If the main model is busy or out of quota, the step falls back to another Gemini model.
+- **The Test lab shows the proof in place.** Click a quoted line or an attachment and the whole document opens
+  beside the comparison, with every line a value was read from marked. Nothing is decided there: it uses the same
+  evidence as the quotes, and the tests check each marked line is exactly the quoted line.
+- **Resilience.** Live AI calls are optional: the results and explanations are built offline and saved, so the site
+  makes no Gemini calls while people browse it. If Gemini is busy or out of quota, Retry keeps the saved result.
+  Adding a second AI provider (with the scan readings re-checked against the pages) is on the roadmap.
+- **Hardening.** One bad email becomes a "needs review" case instead of stopping the app; a corrupt AI cache file
+  is ignored; a single rejected request no longer switches AI off for good; if the reviews database is unreachable
+  the inbox still loads and saves fail with a clear message; posted data must be JSON and is size-capped; the CSV
+  export neutralises spreadsheet formulas; every error a person can see is a plain sentence. Each has a test.
 - **The AI results in this repo come from real calls.** For the three scanned emails (512 to 514) the values in
   `results.json` were produced by Gemini reading the scanned pages, and were then checked against the pages by hand:
   21 of 21 values matched. Nothing is typed in.
+
+## Known limits
+
+- All data is synthetic, and there is no login: reviewer decisions are stored per email, not per user.
+- The keyword rules that classify emails were written from this dataset's wording; a real inbox would need them widened.
+- On scanned emails only the SI page is read by Gemini; the BL side is left for the reviewer.
+- Only cases that need review can be edited in the app.
+
+## Notes for judges
+
+- The demo database is shared: anyone who saves, resolves or undoes a case changes what the next person sees, so the
+  counts may differ from the video. The baseline is 63 no mismatch, 46 mismatches, 20 needing review, 91 awaiting the draft BL.
+- **Retry** is a demo action. The precomputed results are the reference; Retry re-checks one email on one server.
+- Gemini is optional. Everything works without it, and it never decides a verdict.
+- There is no login on purpose, so anyone can try it. Authentication is on the roadmap.
 
 ## Setup
 
@@ -82,7 +129,7 @@ d. Check that the key works:
 python check_gemini.py
 ```
 
-It should print `SUCCESS`. If it says the model is not found, replace `GEMINI_MODEL` with a current Flash model name listed in AI Studio, and run the check again.
+It should print `SUCCESS`. If it says the model is not found, replace `GEMINI_MODEL` with a current Flash model name listed in AI Studio, and run the check again. To see which Flash models your key can use right now, run `python check_gemini.py --models`.
 
 **4. Start the app**
 
@@ -122,6 +169,65 @@ python tools/score_cli.py submission.json --ground-truth path/to/ground_truth.js
 
 The tests use a simulated AI, so they need no key. The scoring tool needs the organizers' `ground_truth.json`, which is not included in this repository.
 
+### Rebuild the saved AI results (optional)
+
+```
+python precompute.py --with-ai
+python explain.py
+```
+
+The first rebuilds `results.json` (Gemini reads the three scanned emails; about five requests, capped) and refuses to write the file if any call failed. The second writes `explanations.json`, the plain-language reasons (about three requests, with a fallback to another model when the main one is busy). Answers are cached in `.cache/`, so re-runs cost no API calls.
+
+
+## Deploy (Vercel + Supabase)
+
+The app runs on Vercel and keeps reviewer decisions in Supabase. Pushing to `main` deploys it; other branches
+get a private preview.
+
+1. In Vercel, import the GitHub repo (it detects Flask from `vercel.json`).
+2. Add Supabase to the project (Storage tab). This sets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. In Supabase, open the SQL Editor and run `supabase/schema.sql` once.
+4. Optional: add `GEMINI_API_KEY` (and `GEMINI_MODEL`) in the project's environment variables. Without a
+   key the app runs rules-only. Environment changes need a redeploy.
+5. Check `/healthz` on the live URL: it should say `"ready":true` and `"reviews":"supabase"`.
+
+Run it on your own machine with `pip install -r requirements.txt` and `python app.py`. Without the Supabase
+variables, reviewer decisions are kept in a local `reviews.json` (git-ignored).
+
+**Evidence for every value.** Each value in the comparison table (and in the review form) is shown with
+the exact line of the source document it was read from, plus the file name and line number, so a person
+can check it at a glance. The tests confirm that every quoted line is verbatim line N of the named file
+and contains the displayed value; a value the AI finds is accepted only if it quotes a real line.
+
+**Fast start-up.** `results.json` holds the checked results for every email, so the app is ready
+the moment it starts instead of re-reading every attachment (slow on a serverless host). It is
+tied to the data and the checking code by a fingerprint: if either changes, the app ignores the
+file, says so in its log, and computes live. After changing the data or the rules, run
+`python precompute.py` and commit the new `results.json` (`python precompute.py --check` tells
+you whether it is up to date; the test suite checks it too). Only do that on a checkout whose
+data files are intact: on Windows, Git can rewrite the line endings inside small PDFs and break
+them, which is why `.gitattributes` marks attachments as binary.
+
+## Architecture
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagrams, the design decisions and the known limits.
+
+## Validation lab
+
+`python -m validation.run` writes [`validation/REPORT.md`](validation/REPORT.md) (seeded, rules only, no API calls):
+
+- **Field fuzzer** (`validation/fuzz.py`): real value pairs that agree are rewritten. Formatting changes must
+  still match, changes of meaning must be flagged, blanked values must go to a person.
+- **Document fuzzer** (`validation/fuzz_docs.py`): real SI/BL text files are re-laid-out, given wording the
+  extractor does not know (it must escalate, never report a clean pass), or given a real defect (it must be
+  found in the right field).
+- **Organisers' ground truth** (`python -m validation.run --organiser DIR`): the organisers' scorer on their
+  data and on three fresh datasets. Their files are not in this repository; only the scores are saved.
+- **Team-labelled sample**: `validation/label_packet/packet.html` holds 60 emails with no system answers.
+  Teammates label them, drop the CSVs into `validation/labels/`, and the report compares them with the system.
+
+The tests in `tests/test_validation.py` run the same fuzzers, so a change to the checking rules that breaks
+one fails the suite.
 
 ## Project layout
 
@@ -131,7 +237,8 @@ The tests use a simulated AI, so they need no key. The scoring tool needs the or
 | `readers.py`  | Turn txt / pdf / docx / xlsx attachments into plain text |
 | `extract.py`  | Find the 7 fields, whatever the label wording, and keep the source line of each |
 | `compare.py`  | Normalise values and compare SI vs BL |
-| `llm.py`      | Optional Gemini helpers (cached, retried, capped, never crash the run) |
+| `llm.py`      | Optional Gemini helpers (cached, retried, capped, with a fallback model; never crash the run) |
+| `explain.py`  | Gemini-written plain-language reasons for mismatches and review cases (checked, saved, never deciding) |
 | `pipeline.py` | Runs everything and produces one result per email |
 | `app.py` + `static/index.html` | The web app (API + Apple-Mail-style interface) |
 | `store.py`    | Where reviewer decisions live: Supabase, or a local file |
@@ -140,4 +247,4 @@ The tests use a simulated AI, so they need no key. The scoring tool needs the or
 | `docs/` | Architecture diagrams and the architecture document |
 | `supabase/schema.sql` | The one table the app needs |
 | `vercel.json` | Vercel settings |
-| `tests/` | 71 automated tests |
+| `tests/` | 120 automated tests |

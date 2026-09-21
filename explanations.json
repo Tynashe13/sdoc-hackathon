@@ -1,0 +1,271 @@
+{
+ "explanations": {
+  "email_004": {
+   "basis": "b754293f3879c2aa",
+   "text": "The consignee and notify party differ. For both, the SI says \"EAST BRIGHT FZ-LLC\" and the BL says \"UAB NOVAKOPA\"."
+  },
+  "email_013": {
+   "basis": "b8f46d7272f54b9c",
+   "text": "The port of discharge differs: the SI says \"MOMBASA, KENYA (KEMBA)\" and the BL says \"TUTICORIN, INDIA (KEMBA)\"."
+  },
+  "email_025": {
+   "basis": "7413c4b253d11d7d",
+   "text": "The port of discharge and container count differ. The SI says \"FREMANTLE, AUSTRALIA (AUFRE)\" and \"6 x 20'GP\", while the BL says \"BUSAN, SOUTH KOREA (AUFRE)\" and \"5 x 20'GP\"."
+  },
+  "email_031": {
+   "basis": "75081c5f3a8c190b",
+   "text": "The container count and gross weight differ. The SI says \"1 x 20'GP\" and \"21,114 KG\", while the BL says \"3 x 20'GP\" and \"23,114 KG\"."
+  },
+  "email_043": {
+   "basis": "94a6845a5ca9621b",
+   "text": "The container count differs: the SI says \"3 x 20'GP\" and the BL says \"5 x 20'GP\"."
+  },
+  "email_046": {
+   "basis": "13e9f5eef3dbac00",
+   "text": "The notify party differs: the SI says \"TOPKOPY MIDDLE EAST FZE\" and the BL says \"MOORIM SP CO., LTD\"."
+  },
+  "email_065": {
+   "basis": "54b8709d67c411aa",
+   "text": "The notify party and port of discharge differ. The SI says \"INTERNATIONAL FOREST PRODUCTS LLC\" and \"HOCHIMINH CITY, VIETNAM (VNSGN)\", while the BL says \"HABRAS INTERNATIONAL LIMITED\" and \"BUSAN, SOUTH KOREA (VNSGN)\"."
+  },
+  "email_071": {
+   "basis": "e53879ed04c0c97f",
+   "text": "The port of discharge and container count differ. The SI says \"YANGON, MYANMAR (MMRGN)\" and \"6 x 40'HC\", while the BL says \"CEBU, PHILIPPINES (MMRGN)\" and \"8 x 40'HC\"."
+  },
+  "email_091": {
+   "basis": "604eccd8a8f472dd",
+   "text": "The container count differs: the SI says \"3 x 40'HC\" and the BL says \"2 x 40'HC\"."
+  },
+  "email_097": {
+   "basis": "1d8119e647248b61",
+   "text": "The container count and gross weight differ. The SI says \"10 x 40'HC\" and \"216950\", while the BL says \"11 x 40'HC\" and \"215,950\"."
+  },
+  "email_107": {
+   "basis": "c4b243caae41a0b6",
+   "text": "The consignee and container count differ. The SI says \"KTP CO., LTD | KTP BLDG., 36 SANGWON-GIL; SEOUNGDONG-GU, SEOUL, SOUTH KOREA; TEL:02-2285-6025\" and \"2 x 40'HC\", while the BL says \"VITAL SOLUTIONS PTE. LTD.\" and \"3 x 40'HC\"."
+  },
+  "email_111": {
+   "basis": "2c3e2179e4227dba",
+   "text": "The container count differs: the SI says \"4 x 20'GP\" and the BL says \"3 x 20'GP\"."
+  },
+  "email_119": {
+   "basis": "46909e1aed5448a6",
+   "text": "The port of loading differs: the SI says \"PORT KLANG (WESTPORT), MALAYSIA (MYPKG)\" and the BL says \"SINGAPORE, SINGAPORE (MYPKG)\"."
+  },
+  "email_121": {
+   "basis": "c05ded834403e898",
+   "text": "The gross weight differs: the SI says \"20,842 KG\" and the BL says \"21,342 KG\"."
+  },
+  "email_128": {
+   "basis": "6484ada109d03a52",
+   "text": "The port of loading and gross weight differ. The SI says \"NHAVA SHEVA, INDIA (INNSA)\" and \"323,250 KG\", while the BL says \"BUATAN, INDONESIA (INNSA)\" and \"322,250 KG\"."
+  },
+  "email_129": {
+   "basis": "71b34b9a4edc6e1e",
+   "text": "The port of loading and port of discharge differ. The SI says \"NHAVA SHEVA, INDIA (INNSA)\" and \"ASHDOD, ISRAEL (ILASH)\", while the BL says \"BUATAN, INDONESIA (INNSA)\" and \"TUTICORIN, INDIA (ILASH)\"."
+  },
+  "email_133": {
+   "basis": "6bd2d0b83acc5a3b",
+   "text": "The gross weight differs: the SI says \"142,848 KG\" and the BL says \"144,848 KG\"."
+  },
+  "email_144": {
+   "basis": "9f0f2035273276e3",
+   "text": "The consignee and container count differ. The SI says \"NAGAPPA EXPORTS\" and \"12 x 40'HC\", while the BL says \"PACIFIC OFFICE (M) SDN BHD\" and \"11 x 40'HC\"."
+  },
+  "email_145": {
+   "basis": "a34e04e6aff2cc67",
+   "text": "The shipper differs: the SI says \"APRIL FINE PAPER TRADING\" and the BL says \"APRIL FINE PAPER TRADING (MIDDLE EAST) FZE\"."
+  },
+  "email_174": {
+   "basis": "1c5f043295a4368e",
+   "text": "The notify party and port of discharge differ. The SI says \"TOAN LUC PAPER JOINT STOCK COMPANY\" and \"CONAKRY, GUINEA (GNCKY)\", while the BL says \"MOORIM SP CO., LTD\" and \"HOCHIMINH CITY, VIETNAM (GNCKY)\"."
+  },
+  "email_178": {
+   "basis": "baf57334a33a3b9d",
+   "text": "The container count differs: the SI says \"6 x 20'GP\" and the BL says \"7 x 20'GP\"."
+  },
+  "email_182": {
+   "basis": "3fb20d3cb43776b9",
+   "text": "The port of discharge and container count differ. The SI says \"APAPA, NIGERIA (NGAPP)\" and \"5 x 40'HC\", while the BL says \"BALTIMORE, US (NGAPP)\" and \"6 x 40'HC\"."
+  },
+  "email_225": {
+   "basis": "d93bc3e85765d896",
+   "text": "The consignee differs: the SI says \"ROXCEL TRADING GMBH\" and the BL says \"AL GURG STATIONERY LLC\"."
+  },
+  "email_243": {
+   "basis": "da02f4779c501361",
+   "text": "The port of loading and port of discharge differ. The SI says \"PORT KLANG (WESTPORT), MALAYSIA\" and \"HOUSTON, US\", while the BL says \"RUGAO/NANTONG/SHANGHAI, CHINA\" and \"MOMBASA, KENYA\"."
+  },
+  "email_256": {
+   "basis": "38521b434600cdda",
+   "text": "The shipper and port of discharge differ. The SI says \"APRIL FINE PAPER TRADING\" and \"VALPARAISO, CHILE (CLVAP)\", while the BL says \"APRIL FAR EAST (M) SDN BHD\" and \"FREMANTLE, AUSTRALIA (CLVAP)\"."
+  },
+  "email_270": {
+   "basis": "58de9d774fa78f6d",
+   "text": "The port of discharge differs. The SI says \"MERSIN, TURKEY (TRMER)\" and the BL says \"LONG BEACH, US (TRMER)\"."
+  },
+  "email_291": {
+   "basis": "e85dda10d7896270",
+   "text": "The consignee and container count differ. The SI says \"INTERNATIONAL FOREST PRODUCTS LLC | 6 HOLLIS STREET; SUITE 100; FRAMINGHAM, MA 01702, USA\" and \"1 x 20'GP\", while the BL says \"TOPKOPY MIDDLE EAST FZE\" and \"3 x 20'GP\"."
+  },
+  "email_300": {
+   "basis": "a95c8f42d3c9d7c9",
+   "text": "The shipper and notify party differ. The SI says \"APRIL FAR EAST (M) SDN BHD...\" and \"UAB NOVAKOPA...\", while the BL says \"APRIL FINE PAPER TRADING (MIDDLE EAST) FZE...\" and \"NAGAPPA EXPORTS...\"."
+  },
+  "email_302": {
+   "basis": "9ec939a8408196d3",
+   "text": "The container count differs. The SI says \"2 x 20'GP\" and the BL says \"4 x 20'GP\"."
+  },
+  "email_312": {
+   "basis": "f6d3553399120c27",
+   "text": "The shipper and notify party differ. The SI says shipper \"APRIL FINE PAPER TRADING (MIDDLE EAST) FZE\" and notify party \"3S PAPER PRODUCTS SDN BHD\", while the BL says \"APRIL FAR EAST (M) SDN BHD\" and \"KPP-ANTALIS (SINGAPORE) PTE. LTD.\"."
+  },
+  "email_313": {
+   "basis": "874b2c04266ab2a3",
+   "text": "The container count and gross weight differ. The SI says \"5 x 40'HC\" and \"118,270 KG\", while the BL says \"4 x 40'HC\" and \"117,770 KG\"."
+  },
+  "email_324": {
+   "basis": "3b4490649598e113",
+   "text": "The shipper and container count differ. The SI says shipper \"ASIA PACIFIC PAPERBOARD TRADING PTE LTD\" and container count \"3 x 40'HC\", while the BL says \"APRIL FAR EAST (M) SDN BHD\" and \"4 x 40'HC\"."
+  },
+  "email_334": {
+   "basis": "75ea64ac885464bd",
+   "text": "The shipper and consignee differ. The SI says shipper \"ASIA PACIFIC PAPERBOARD TRADING PTE LTD\" and consignee \"EAST BRIGHT FZ-LLC\", while the BL says \"APRIL FINE PAPER TRADING\" and \"INTERNATIONAL FOREST PRODUCTS LLC\"."
+  },
+  "email_342": {
+   "basis": "5ea30af3b73483aa",
+   "text": "The notify party and container count differ. The SI says notify party \"HABRAS INTERNATIONAL LIMITED\" and container count \"1 x 40'HC\", while the BL says \"SAFQA LIMITED\" and \"2 x 40'HC\"."
+  },
+  "email_351": {
+   "basis": "0148a22cec019dd8",
+   "text": "The container count and gross weight differ. The SI says \"15 x 20'FCL\" and \"359,415 KG\", while the BL says \"16 x 20'FCL\" and \"360,415 KG\"."
+  },
+  "email_354": {
+   "basis": "815405a6f0bbd62f",
+   "text": "The notify party and gross weight differ. The SI says notify party \"HABRAS INTERNATIONAL LIMITED | OFFICE 1204, THE BURLINGTON TOWER; BUSINESS BAY, DUBAI, UAE\" and gross weight \"20603\", while the BL says \"NAGAPPA EXPORTS\" and \"22,603\"."
+  },
+  "email_361": {
+   "basis": "d86c820cce5163b0",
+   "text": "The port of discharge and gross weight differ. The SI says port of discharge \"BRISBANE, AUSTRALIA (AUBNE)\" and gross weight \"239,590 KG\", while the BL says \"MOMBASA, KENYA (AUBNE)\" and \"238,590 KG\"."
+  },
+  "email_379": {
+   "basis": "202be5a59361eab4",
+   "text": "The shipper differs. The SI says \"APRIL FAR EAST (M) SDN BHD\" and the BL says \"APRIL FINE PAPER TRADING\"."
+  },
+  "email_410": {
+   "basis": "d093212d1a9e5a5b",
+   "text": "The port of loading differs. The SI says \"SINGAPORE (SGSIN)\" and the BL says \"PORT KLANG (WESTPORT), MALAYSIA (SGSIN)\"."
+  },
+  "email_416": {
+   "basis": "5b3af7fed7e0b4f8",
+   "text": "The gross weight differs. The SI says \"105,625 KG\" and the BL says \"106,625 KG\"."
+  },
+  "email_426": {
+   "basis": "3c56008ffe2d4282",
+   "text": "The port of discharge and container count differ. The SI says port of discharge \"NEW YORK, US (USNYC)\" and container count \"10 x 40'HC\", while the BL says \"KLAIPEDA, LITHUANIA (USNYC)\" and \"11 x 40'HC\"."
+  },
+  "email_434": {
+   "basis": "0c4bc608ab2e2788",
+   "text": "The port of discharge differs. The SI says \"BUSAN, SOUTH KOREA\" and the BL says \"CEBU, PHILIPPINES\"."
+  },
+  "email_435": {
+   "basis": "be3fee2d821f413e",
+   "text": "The gross weight differs. The SI says \"214270\" and the BL says \"214,770\"."
+  },
+  "email_468": {
+   "basis": "405521556d7d8ce0",
+   "text": "The port of loading and container count differ. The SI says port of loading \"SINGAPORE (SGSIN)\" and container count \"1 x 40'HC\", while the BL says \"RUGAO/NANTONG/SHANGHAI, CHINA (SGSIN)\" and \"3 x 40'HC\"."
+  },
+  "email_481": {
+   "basis": "d7ecba2390739a82",
+   "text": "The consignee differs. The SI says \"AL GURG STATIONERY LLC | P.O. BOX 5069; DUBAI, UNITED ARAB EMIRATES\" and the BL says \"3S PAPER PRODUCTS SDN BHD | P.O. BOX 5069; DUBAI, UNITED ARAB EMIRATES\"."
+  },
+  "email_499": {
+   "basis": "3821a31d7f5b7076",
+   "text": "The gross weight differs. The SI says \"40,326 KG\" and the BL says \"41,326 KG\"."
+  },
+  "email_501": {
+   "basis": "bb86161f30debf5d",
+   "text": "A review is required because an attachment is not the expected document. Specifically, the 'BL' attachment is not a BL."
+  },
+  "email_502": {
+   "basis": "bb86161f30debf5d",
+   "text": "A review is required because an attachment is not the expected document. Specifically, the 'BL' attachment is not a BL."
+  },
+  "email_503": {
+   "basis": "bb86161f30debf5d",
+   "text": "A review is required because an attachment is not the expected document. Specifically, the 'BL' attachment is not a BL."
+  },
+  "email_504": {
+   "basis": "bb86161f30debf5d",
+   "text": "A review is required because an attachment is not the expected document. Specifically, the 'BL' attachment is not a BL."
+  },
+  "email_505": {
+   "basis": "bb86161f30debf5d",
+   "text": "An attachment is not the expected document, as the 'BL' attachment is not a BL."
+  },
+  "email_506": {
+   "basis": "065b43fecf6fc345",
+   "text": "The SI or the draft BL is missing, with 0 of 2 attachments received."
+  },
+  "email_507": {
+   "basis": "3e74cc06df1d2eb6",
+   "text": "The SI or the draft BL is missing, with only 1 of 2 attachments received."
+  },
+  "email_508": {
+   "basis": "065b43fecf6fc345",
+   "text": "The SI or the draft BL is missing, with 0 of 2 attachments received."
+  },
+  "email_509": {
+   "basis": "3e74cc06df1d2eb6",
+   "text": "The SI or the draft BL is missing, with only 1 of 2 attachments received."
+  },
+  "email_510": {
+   "basis": "065b43fecf6fc345",
+   "text": "The SI or the draft BL is missing, with 0 of 2 attachments received."
+  },
+  "email_511": {
+   "basis": "d9d461524ea93b86",
+   "text": "The document 'email_511_BL.pdf' cannot be read reliably. It returned 'PdfminerException: No /Root object! - Is this really a PDF?'."
+  },
+  "email_512": {
+   "basis": "ea9ce7b8f8101ebb",
+   "text": "The documents 'email_512_SI.pdf' and 'email_512_BL.pdf' cannot be read reliably. No text was found, indicating they may be scanned or image-only."
+  },
+  "email_513": {
+   "basis": "a5a03a3d24b5d167",
+   "text": "The documents 'email_513_SI.pdf' and 'email_513_BL.pdf' cannot be read reliably. No text was found, indicating they may be scanned or image-only."
+  },
+  "email_514": {
+   "basis": "72a0d8f003428903",
+   "text": "The documents 'email_514_SI.pdf' and 'email_514_BL.pdf' cannot be read reliably. No text was found, indicating they may be scanned or image-only."
+  },
+  "email_515": {
+   "basis": "7d828a9cd7d81dc6",
+   "text": "The document 'email_515_BL.pdf' cannot be read reliably. It returned 'PdfminerException: No /Root object! - Is this really a PDF?'."
+  },
+  "email_516": {
+   "basis": "d38ac65066d63098",
+   "text": "A required value is blank or not stated. The SI is missing 'gross_weight_kg'."
+  },
+  "email_517": {
+   "basis": "9af61efafc2e884f",
+   "text": "A required value is blank or not stated. The SI is missing 'port_of_discharge'."
+  },
+  "email_518": {
+   "basis": "6fcf0ba0f0b46706",
+   "text": "Required values are blank or not stated. The SI is missing 'port_of_discharge' and 'gross_weight_kg'."
+  },
+  "email_519": {
+   "basis": "00b5eaea62f29ccf",
+   "text": "Required values are blank or not stated. The SI is missing 'shipper' and 'container_count'."
+  },
+  "email_520": {
+   "basis": "5bf765cd22555614",
+   "text": "A required value is blank or not stated. The SI is missing 'consignee'."
+  }
+ },
+ "model": [
+  "gemini-3.5-flash"
+ ]
+}

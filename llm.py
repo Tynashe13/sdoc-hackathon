@@ -21,10 +21,19 @@ except ImportError:
     pass
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")   # change in .env if AI Studio lists another
+# other models to try, for the wording-only jobs, when the main model is busy (503), out of quota (429) or missing (404).
+# Each model has its own allowance, so one being used up does not mean the others are.
+FALLBACK_MODELS = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",") if m.strip()]
+LAST_MODEL = None    # the model that gave the most recent answer from ask_json_any
+_model_quota_at = {}  # model -> when it last ran out of allowance (ask_json_any skips it for QUOTA_COOLDOWN seconds)
 CACHE = Path("/tmp/llm-cache" if os.getenv("VERCEL") else ".cache/llm")   # Vercel's disk is read-only except /tmp
 _client, _tried = None, False
 CALLS = 0            # real requests sent to Gemini so far in this run
 MAX_CALLS = None     # optional cap on those requests: a bad night of retries must not eat the whole daily allowance
+_quota_hit_at = 0.0
+QUOTA_COOLDOWN = 600  # seconds: a long-running server tries Gemini again after this, in case the allowance has reset
+_disabled_at = 0.0   # when a bad request or key switched AI off; it is tried again after QUOTA_COOLDOWN
+QUOTA_WAIT = 60      # seconds to wait after a first 429 before one more try (the web app shortens this)
 _quota_hit = False   # the key has used up its Gemini allowance: stop asking, every further call would fail too
 FAILED = []          # one entry per call that gave up (busy or broken service), so callers can tell "found nothing" from "unavailable"
 ATTEMPTS = 5        # a busy server (503) usually recovers within a minute
@@ -41,7 +50,9 @@ CATEGORIES = {
 
 
 def _get_client():
-    global _client, _tried
+    global _client, _tried, _disabled_at
+    if _tried and _disabled_at and time.time() - _disabled_at > QUOTA_COOLDOWN:
+        _tried, _disabled_at = False, 0.0     # one rejected request must not switch AI off for good
     if _tried:
         return _client
     _tried = True
@@ -61,16 +72,21 @@ def enabled() -> bool:
     return _get_client() is not None
 
 
-def ask_json(prompt, images=()):
+def ask_json(prompt, images=(), model=None):
     """One Gemini call that must return JSON.  Cached, retried, never raises."""
-    global CALLS
+    global CALLS, _quota_hit
+    model = model or MODEL
     client = _get_client()
     if client is None:
         return None
-    digest = hashlib.sha256(MODEL.encode() + prompt.encode() + b"".join(images)).hexdigest()
+    digest = hashlib.sha256(model.encode() + prompt.encode() + b"".join(images)).hexdigest()
     cache_file = CACHE / f"{digest}.json"
-    if cache_file.exists():
-        return json.loads(cache_file.read_text())
+    try:
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass                                        # no cache, or a half-written one: ask again
+    if _quota_hit and time.time() - _quota_hit_at > QUOTA_COOLDOWN:
+        _quota_hit = False
     if _quota_hit:
         FAILED.append("quota exceeded (429)")
         return None
@@ -90,12 +106,14 @@ def ask_json(prompt, images=()):
         print(f"[llm] asking Gemini ({what}), try {attempt + 1}/{ATTEMPTS}; it can take up to a minute ...",
               file=sys.stderr, flush=True)
         try:
-            reply = client.models.generate_content(model=MODEL, contents=parts, config=config)
+            reply = client.models.generate_content(model=model, contents=parts, config=config)
             data = json.loads(reply.text)
             print("[llm] Gemini answered", file=sys.stderr, flush=True)
             try:
                 CACHE.mkdir(parents=True, exist_ok=True)
-                cache_file.write_text(json.dumps(data))
+                tmp = cache_file.with_suffix(f".{os.getpid()}.tmp")
+                tmp.write_text(json.dumps(data), encoding="utf-8")
+                os.replace(tmp, cache_file)         # a reader never sees a half-written file
             except OSError:
                 pass                                # no cache is fine, just slower next time
             return data
@@ -105,14 +123,15 @@ def ask_json(prompt, images=()):
                   f"{str(exc)[:300]}", file=sys.stderr)
             if code == 429:                        # quota: hammering it every few seconds only makes it worse
                 if attempt == 0:
-                    print("[llm] quota exceeded (429): waiting 60 seconds and trying once more", file=sys.stderr, flush=True)
-                    time.sleep(60)
+                    print(f"[llm] quota exceeded (429): waiting {QUOTA_WAIT} seconds and trying once more", file=sys.stderr, flush=True)
+                    time.sleep(QUOTA_WAIT)
                     continue
                 _give_up_on_quota()
                 return None
             if code in (400, 401, 403, 404):      # bad key / bad model name: retrying is pointless
                 FAILED.append(f"HTTP {code}")
-                _disable(f"stopping AI calls for this run - fix the problem above (HTTP {code})")
+                if model == MODEL:                # a wrong fallback model must not switch the main one off
+                    _disable(f"stopping AI calls for this run - fix the problem above (HTTP {code})")
                 return None
             if attempt < ATTEMPTS - 1:
                 time.sleep(min(2 ** (attempt + 1), 30))   # rate limit (429) / server error: back off
@@ -120,9 +139,36 @@ def ask_json(prompt, images=()):
     return None
 
 
+def ask_json_any(prompt, models=None):
+    """ask_json, but when a model cannot answer (busy 503, its allowance used up 429, or not found 404), try the next
+    model in the list. Only for jobs whose answer is checked afterwards. If a later model answers, the earlier
+    attempts are not counted as failures; if none answers, every failure stays recorded in FAILED. A bad key or a
+    bad request stops the search, because another model would fail the same way."""
+    global LAST_MODEL, _quota_hit
+    models = models or [MODEL] + [m for m in FALLBACK_MODELS if m != MODEL]
+    start = len(FAILED)
+    for m in models:
+        if time.time() - _model_quota_at.get(m, 0) < QUOTA_COOLDOWN:
+            continue                                     # this model used up its allowance a moment ago
+        before = len(FAILED)
+        _quota_hit = False                               # the allowance is per model: judge each one on its own
+        out = ask_json(prompt, model=m)
+        if out is not None:
+            LAST_MODEL = m
+            del FAILED[start:]
+            return out
+        new = FAILED[before:]
+        if "quota exceeded (429)" in new:
+            _model_quota_at[m] = time.time()
+        elif new not in (["service unavailable"], ["HTTP 404"]):
+            break
+    return None
+
+
 def _give_up_on_quota():
-    global _quota_hit
+    global _quota_hit, _quota_hit_at
     _quota_hit = True
+    _quota_hit_at = time.time()
     FAILED.append("quota exceeded (429)")
     print("[llm] Gemini quota exceeded: this key has used up its allowance (per minute or per day). No more calls "
           "will be made in this run. Check https://ai.dev/rate-limit, wait for it to reset, or use another key/model.",
@@ -130,9 +176,9 @@ def _give_up_on_quota():
 
 
 def _disable(why):
-    global _client
+    global _client, _disabled_at
     print(f"[llm] {why}", file=sys.stderr)
-    _client = None
+    _client, _disabled_at = None, time.time()
 
 
 def classify_email(email, body):
@@ -157,7 +203,7 @@ def _norm(s):
 def fill_missing(text, fields):
     """Ask Gemini only for fields the rules could not find.  A value is accepted only when
     the line it quotes really appears in the document - this blocks made-up answers."""
-    if not enabled() or not fields:
+    if not text or not enabled() or not fields:
         return {}
     prompt = (
         "Below is a shipping document.  Find these fields, wording may differ from the names "
