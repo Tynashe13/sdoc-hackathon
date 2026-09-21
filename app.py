@@ -15,12 +15,13 @@ from datetime import datetime, timezone
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
+import explain
 import llm
 import pipeline
 import snapshot
 import store
 from classify import body_core
-from compare import field_table
+from compare import field_table, normalise
 from extract import FIELDS
 from loader import Inbox
 from readers import NoTextError, ReadError, pdf_page_pngs, read_attachment
@@ -32,6 +33,8 @@ RESULTS_FILE = os.getenv("RESULTS_FILE", "results.json")
 llm.ATTEMPTS = int(os.getenv("LLM_ATTEMPTS", "2"))
 llm.TIMEOUT_MS = int(os.getenv("LLM_TIMEOUT_MS", "30000"))
 
+FIELD_NAMES, REVIEW_TEXT = explain.FIELD_NAMES, explain.REVIEW_TEXT
+EXPLANATIONS = explain.load(os.getenv("EXPLANATIONS_FILE", "explanations.json"))   # AI-written reasons, see explain.py
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 inbox = Inbox(DATA_DIR)
 EMAILS = {e["email_id"]: e for e in inbox}
@@ -130,6 +133,12 @@ def preview(email):
     return text[:140]
 
 
+def explanation(r, eid):
+    """The AI-written reason for this case, only if it was written for exactly these values."""
+    saved, f = EXPLANATIONS.get(eid), explain.facts(r)
+    return saved["text"] if saved and f and saved.get("basis") == explain.basis(f) else None
+
+
 def summary(eid):
     e, r = EMAILS[eid], effective(eid)
     name, initials, hue = sender(e["from"])
@@ -138,7 +147,7 @@ def summary(eid):
             "category": r["category"], "status": r["status"], "reason": r["review_reason"],
             "mismatches": len(r["defect_fields"]), "resolved": bool(r.get("resolved")),
             "human": bool(r.get("human_reviewed")), "awaiting": bool(r.get("awaiting_documents")),
-            "ai": bool(r.get("ai_assisted"))}
+            "ai": bool(r.get("ai_assisted") or explanation(r, eid))}
 
 
 def attachment_info(eid):
@@ -161,7 +170,10 @@ def detail(eid):
     e, r = EMAILS[eid], effective(eid)
     name, initials, hue = sender(e["from"])
     return {**summary(eid), "body": e["body"], "decided_by": r["decided_by"], "detail": r["detail"] if "detail" in r else "",
-            "table": r.get("table"), "form": r.get("form"), "ai_notes": r.get("ai_notes", []),
+            "table": r.get("table"), "form": r.get("form"), "ai_explanation": explanation(r, eid),
+            "ai_notes": r.get("ai_notes", []) + (
+                ["wrote the plain-language explanation of the differences; the verdict itself comes from the rules"]
+                if explanation(r, eid) else []),
             "ai_suggestion": r.get("ai_suggestion"), "ai_consulted": r.get("ai_consulted", []),
             "review": r.get("review"),
             "files": attachment_info(eid), "fields": FIELDS}
@@ -239,11 +251,18 @@ def api_resolve(eid):
 
 @app.post("/api/emails/<eid>/retry")
 def api_retry(eid):
-    """Run the whole check again for one email (clears any human decision)."""
+    """Run the whole check again for one email (clears any human decision).
+    If Gemini is busy or out of quota and the saved result already used it, keep that result and the
+    reviewer's decision instead of replacing them with a weaker one."""
     if eid not in EMAILS or not STATE["ready"]:
         abort(404)
+    old = STATE["results"][eid]
+    failed_before = len(llm.FAILED)
+    new = pipeline.process_email(inbox, EMAILS[eid])
+    if len(llm.FAILED) > failed_before and (old.get("ai_assisted") or old.get("ai_consulted")):
+        return jsonify({**detail(eid), "kept": True})
     _decide(eid)
-    STATE["results"][eid] = pipeline.process_email(inbox, EMAILS[eid])
+    STATE["results"][eid] = new
     return jsonify(detail(eid))
 
 
@@ -253,13 +272,34 @@ def api_undo(eid):
     return jsonify(detail(eid))
 
 
+def why_it_differs(row):
+    """One plain sentence saying why a field counts as a mismatch."""
+    f, name = row["field"], FIELD_NAMES[row["field"]]
+    if f in ("shipper", "consignee", "notify_party"):
+        return f"{name}: different company or name"
+    if f in ("port_of_loading", "port_of_discharge"):
+        a, b = normalise(f, row["si"]), normalise(f, row["bl"])
+        if a and b and a[0] == b[0]:
+            return f"{name}: same port name but a different port code"
+        return f"{name}: different port"
+    if f == "container_count":
+        return f"{name}: the number, size or type of containers differs"
+    a, b = normalise(f, row["si"]), normalise(f, row["bl"])
+    if a and b:
+        diff = abs(a[0] - b[0])
+        pct = 100 * diff / max(a[0], b[0])
+        amount = f"{diff:,.0f}" if diff >= 10 else f"{diff:,.1f}".rstrip("0").rstrip(".")
+        return f"{name}: weights differ by {amount} kg ({pct:.1f}%)"
+    return f"{name}: weights differ"
+
+
 @app.get("/api/report.csv")
 def api_report():
     """Discrepancy report for every document-check request (includes human decisions)."""
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["email_id", "from", "subject", "result", "review_reason", "mismatched_fields",
-                "details (SI vs BL)", "human_reviewed", "ai_assisted"])
+                "details (SI vs BL)", "why (plain language)", "human_reviewed", "ai_assisted"])
     for eid in ORDER:
         r = effective(eid)
         if r["category"] != "BL_COMPARISON":
@@ -269,11 +309,19 @@ def api_report():
         if r.get("awaiting_documents"):
             result = "Awaiting draft BL (nothing to compare yet)"
         bad = [row for row in (r.get("table") or []) if row["status"] == "mismatch"]
+        if r.get("awaiting_documents"):
+            why = "Only the draft BL was requested, so there is nothing to compare yet"
+        elif r["status"] == "NEEDS_REVIEW":
+            why = REVIEW_TEXT.get(r["review_reason"], "A person needs to look at this case")
+        else:
+            why = "; ".join(why_it_differs(x) for x in bad)
+        why = explanation(r, eid) or why
         w.writerow([eid, e["from"], e["subject"], result, r["review_reason"] or "",
                     ", ".join(r["defect_fields"]),
                     "; ".join(f"{x['field']}: SI {x['si']} / BL {x['bl']}" for x in bad) or r.get("detail", ""),
+                    why,
                     "yes" if r.get("human_reviewed") or r.get("resolved") else "no",
-                    "yes" if r.get("ai_assisted") else "no"])
+                    "yes" if r.get("ai_assisted") or explanation(r, eid) else "no"])
     return Response(buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="discrepancy_report.csv"'})
 

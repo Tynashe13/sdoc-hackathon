@@ -25,6 +25,8 @@ CACHE = Path("/tmp/llm-cache" if os.getenv("VERCEL") else ".cache/llm")   # Verc
 _client, _tried = None, False
 CALLS = 0            # real requests sent to Gemini so far in this run
 MAX_CALLS = None     # optional cap on those requests: a bad night of retries must not eat the whole daily allowance
+_quota_hit_at = 0.0
+QUOTA_COOLDOWN = 600  # seconds: a long-running server tries Gemini again after this, in case the allowance has reset
 _quota_hit = False   # the key has used up its Gemini allowance: stop asking, every further call would fail too
 FAILED = []          # one entry per call that gave up (busy or broken service), so callers can tell "found nothing" from "unavailable"
 ATTEMPTS = 5        # a busy server (503) usually recovers within a minute
@@ -63,7 +65,7 @@ def enabled() -> bool:
 
 def ask_json(prompt, images=()):
     """One Gemini call that must return JSON.  Cached, retried, never raises."""
-    global CALLS
+    global CALLS, _quota_hit
     client = _get_client()
     if client is None:
         return None
@@ -71,6 +73,8 @@ def ask_json(prompt, images=()):
     cache_file = CACHE / f"{digest}.json"
     if cache_file.exists():
         return json.loads(cache_file.read_text())
+    if _quota_hit and time.time() - _quota_hit_at > QUOTA_COOLDOWN:
+        _quota_hit = False
     if _quota_hit:
         FAILED.append("quota exceeded (429)")
         return None
@@ -121,8 +125,9 @@ def ask_json(prompt, images=()):
 
 
 def _give_up_on_quota():
-    global _quota_hit
+    global _quota_hit, _quota_hit_at
     _quota_hit = True
+    _quota_hit_at = time.time()
     FAILED.append("quota exceeded (429)")
     print("[llm] Gemini quota exceeded: this key has used up its allowance (per minute or per day). No more calls "
           "will be made in this run. Check https://ai.dev/rate-limit, wait for it to reset, or use another key/model.",

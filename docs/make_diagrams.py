@@ -119,10 +119,10 @@ def architecture():
     for cx, t in cols:
         s.arrow([(cx, 430), (cx, 350)], AI[1], dash=True)
         s.text(cx - 104, 488, t, 14, 400, INK, width=220)
-    s.text(1160, 488, "Every AI answer is either", 14, 700, AI[1], "middle")
-    s.text(1160, 508, "checked against the", 14, 700, AI[1], "middle")
-    s.text(1160, 528, "document or shown to a", 14, 700, AI[1], "middle")
-    s.text(1160, 548, "person as a suggestion.", 14, 700, AI[1], "middle")
+    s.text(1160, 488, "After the verdict, it also", 14, 700, AI[1], "middle")
+    s.text(1160, 508, "writes a plain-language", 14, 700, AI[1], "middle")
+    s.text(1160, 528, "reason for each mismatch.", 14, 700, AI[1], "middle")
+    s.text(1160, 548, "It never decides.", 14, 700, AI[1], "middle")
 
     # human loop
     ny, nh = rows["NEEDS REVIEW"]

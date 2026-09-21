@@ -6,6 +6,8 @@ a person, with the evidence in front of them. Built for the Averis x Monash Hack
 
 **Live demo: https://sdoc-hackathon.vercel.app** (works on a phone; no login)
 
+**One-page overview (PDF):** [docs/SDOC-Check-Overview.pdf](docs/SDOC-Check-Overview.pdf)
+
 ![How one email becomes a verdict](docs/architecture.png)
 
 ## Try it in two minutes
@@ -31,7 +33,7 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 | Document fuzzer | 890 layout changes keep their verdict; unfamiliar wording is always escalated (267 of 267); 1,948 injected defects found in the right field |
 | Organisers' ground truth | 100% on the given data and three freshly generated datasets (synthetic, so this is saturated: the fuzzers are the harder test) |
 | A real bug found by the fuzzers | Weights 1 kg apart counted as equal. Fixed and covered by a test |
-| Automated tests | 71 |
+| Automated tests | 92 |
 
 Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.md). The team-labelled sample
 (60 emails labelled by hand, blind to the system) is built but not yet labelled, and the report says so.
@@ -46,6 +48,13 @@ Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.m
 - **Gemini is optional and guarded.** It can classify an email the rules cannot place, fill a missing field only if
   it quotes a line that really is in the document, and read a scanned page as a suggestion. Anything it touches is
   tagged, carries a disclaimer, and needs a person to confirm it.
+- **Gemini also writes the plain-language reason** for every mismatch and every case that needs review
+  (`python explain.py`, about three requests). It is given only the compared values, is never asked to decide,
+  and its sentence is kept only if it mentions the values it explains. It is tagged `AI`, appears in the app and in
+  the CSV report, and disappears if a person corrects the case.
+- **Resilience.** Live AI calls are optional: the results and explanations are built offline and saved, so the site
+  makes no Gemini calls while people browse it. If Gemini is busy or out of quota, Retry keeps the saved result.
+  Adding a second AI provider (with the scan readings re-checked against the pages) is on the roadmap.
 - **The AI results in this repo come from real calls.** For the three scanned emails (512 to 514) the values in
   `results.json` were produced by Gemini reading the scanned pages, and were then checked against the pages by hand:
   21 of 21 values matched. Nothing is typed in.
@@ -162,6 +171,7 @@ one fails the suite.
 | `extract.py`  | Find the 7 fields, whatever the label wording, and keep the source line of each |
 | `compare.py`  | Normalise values and compare SI vs BL |
 | `llm.py`      | Optional Gemini helpers (cached, retried, capped, never crash the run) |
+| `explain.py`  | Gemini-written plain-language reasons for mismatches and review cases (checked, saved, never deciding) |
 | `pipeline.py` | Runs everything and produces one result per email |
 | `app.py` + `static/index.html` | The web app (API + Apple-Mail-style interface) |
 | `store.py`    | Where reviewer decisions live: Supabase, or a local file |
@@ -170,4 +180,4 @@ one fails the suite.
 | `docs/` | Architecture diagrams and the architecture document |
 | `supabase/schema.sql` | The one table the app needs |
 | `vercel.json` | Vercel settings |
-| `tests/` | 71 automated tests |
+| `tests/` | 92 automated tests |

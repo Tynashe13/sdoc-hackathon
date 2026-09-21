@@ -98,6 +98,7 @@ a.btn{text-decoration:none;color:var(--text)}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--fill);color:var(--text2)}
 .chip.red{background:var(--red-bg);color:var(--red)}.chip.green{background:var(--green-bg);color:var(--green)}
 .chip.orange{background:var(--orange-bg);color:#c66f00}.chip.blue{background:var(--blue-bg);color:var(--accent)}
+.aiwhy{display:flex;gap:7px;margin-top:9px;font-size:12.5px;line-height:1.45}.aiwhy svg.i{color:#af52de;flex:none;margin-top:2px}
 .aitag{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:0 6px;border-radius:10px;background:rgba(175,82,222,.18);color:#af52de;vertical-align:middle;letter-spacing:.3px}
 @media (prefers-color-scheme:dark){.chip.orange{color:var(--orange)}}
 .row.sel .chip{background:rgba(255,255,255,.24);color:#fff}
@@ -307,6 +308,7 @@ const BOXES = [
   {id:'review', label:'Needs review', icon:'eye', test:e=>e.status==='NEEDS_REVIEW', hot:e=>e.status==='NEEDS_REVIEW'&&!e.resolved},
   {id:'mismatch', label:'Mismatches', icon:'warn', test:e=>e.status==='MISMATCH'},
   {id:'ok', label:'No mismatch', icon:'checkc', test:e=>e.category==='BL_COMPARISON'&&e.status==='OK'&&!e.awaiting},
+  {id:'awaiting', label:'Awaiting draft BL', icon:'clock', test:e=>e.awaiting, note:'The sender only asked for the draft BL, so there is nothing to compare yet.'},
   {id:'checks', label:'All document checks', icon:'doc', test:e=>e.category==='BL_COMPARISON'},
   {group:'Other mail'},
   {id:'si', label:'New SI requests', icon:'newdoc', test:e=>e.category==='SI_REQUEST'},
@@ -388,7 +390,7 @@ $('#nav').addEventListener('click', ev=>{
 function renderList(){
   const box = BOXES.find(b=>b.id===state.box), list = visible();
   $('#listTitle').textContent = box.label;
-  $('#listSub').textContent = `${list.length} message${list.length===1?'':'s'}`;
+  $('#listSub').textContent = `${list.length} message${list.length===1?'':'s'}` + (box.note ? ' · ' + box.note : '');
   $('#backLabel').textContent = box.label;
   $('#rows').innerHTML = list.length ? list.map(e=>{
     const [c, t] = chip(e);
@@ -419,6 +421,10 @@ async function select(id, scroll){
 }
 
 /* ------------------------------------------------ reader */
+/* the plain-language reason written by Gemini for this case (the verdict itself comes from the rules) */
+function whyHtml(d){
+  return d.ai_explanation ? `<div class="aiwhy">${ico('spark')}<div><b>In plain words:</b> ${esc(d.ai_explanation)} <span class="aitag" title="Written by Gemini (AI) from the two values; it did not decide the verdict">AI</span></div></div>` : '';
+}
 /* the exact line of the document a value was read from, with its file and line number */
 function quote(ev){
   return ev ? `<span class="q" title="${esc(ev.doc)} · line ${ev.line_no}">“${esc(ev.line)}”<i>${esc(ev.doc)} · line ${ev.line_no}</i></span>` : '';
@@ -456,7 +462,7 @@ function verifyCard(d){
   const head = d.status==='OK'
     ? banner('green','check','No mismatch detected','All seven fields agree between the Shipping Instruction and the draft Bill of Lading.')
     : banner('red','warn',`${bad.length} mismatch${bad.length>1?'es':''} found`, 'Fix these on the draft Bill of Lading before it is finalised.',
-        `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>`);
+        `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>` + whyHtml(d));
   return `<div class="card">${head}${tableHtml(rows)}${reviewedFooter(d)}</div>`;
 }
 /* shown on every email where Gemini contributed: what it did, and that it can be wrong */
@@ -467,6 +473,7 @@ function aiDisclaimer(d){
   const found = (d.table||[]).some(r=>r.si_ai||r.bl_ai);
   const closing = found ? `Values it found are marked <span class="aitag" style="margin:0">AI</span>. Check them against the quoted source line, or the document, before relying on them.`
     : d.ai_suggestion ? 'Check the suggested values against the scanned page before relying on them.'
+    : d.ai_explanation ? 'The verdict comes from the rules; the explanation only summarises the values shown above, so check it against them.'
     : 'Check it against the email before relying on it.';
   return `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>
     <b>AI-assisted.</b> Part of this result was produced with help from Gemini (AI), which can make mistakes.
@@ -499,7 +506,7 @@ function reviewCard(d){
       <label class="fld"><span class="tag">SI · ${esc(f.si_source)}</span><input data-side="si" data-f="${k}" class="${aiSide('si')?'ai':''}" value="${esc(show(f.si[k])??'')}" placeholder="Enter value" aria-label="SI ${FIELD[k]}">${quote((f.si_evidence||{})[k])}</label>
       <label class="fld"><span class="tag">BL · ${esc(f.bl_source)}</span><input data-side="bl" data-f="${k}" class="${aiSide('bl')?'ai':''}" value="${esc(show(f.bl[k])??'')}" placeholder="Enter value" aria-label="BL ${FIELD[k]}">${quote((f.bl_evidence||{})[k])}</label></div>`).join('') + `</div>`;
   return `<div class="card">
-    ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'')}
+    ${banner('orange','eye', REASON[d.reason]||'Needs review', REASON_LONG[d.reason]||'', (d.detail?`<p style="margin-top:6px"><b>Details:</b> ${esc(d.detail)}</p>`:'') + whyHtml(d))}
     ${ai?`<div class="aibox">${ico('spark')}<div>Gemini read the scan and suggested the highlighted values. It can misread small print, so please confirm each one against the page${ai.would_flag && ai.would_flag.length ? ` (it would flag: ${ai.would_flag.map(x=>FIELD[x]).join(', ')})`:''}.</div></div>`:''}
     ${evidenceHtml(d)}${inputs}
     <div class="note"><textarea id="note" placeholder="Reviewer note (optional)"></textarea></div>
@@ -529,7 +536,7 @@ function renderReader(){
 
 /* ------------------------------------------------ actions */
 async function act(url, opt, msg){
-  try{ state.detail = await api(url, opt); renderReader(); await refreshList(); toast(msg); }
+  try{ state.detail = await api(url, opt); renderReader(); await refreshList(); toast(state.detail.kept ? 'Gemini is busy, so the saved result was kept.' : msg); }
   catch(e){ toast(e.message); }
 }
 const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
