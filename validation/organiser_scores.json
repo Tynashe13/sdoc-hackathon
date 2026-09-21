@@ -1,0 +1,42 @@
+{
+ "given data (seed 42)": {
+  "emails": 520,
+  "kind_accuracy": 1.0,
+  "defect_precision": 1.0,
+  "defect_recall": 1.0,
+  "field_f1": 1.0,
+  "review_recall": 1.0,
+  "review_precision": 1.0,
+  "end_to_end": "46/46"
+ },
+ "fresh data, seed 1": {
+  "emails": 520,
+  "kind_accuracy": 1.0,
+  "defect_precision": 1.0,
+  "defect_recall": 1.0,
+  "field_f1": 1.0,
+  "review_recall": 1.0,
+  "review_precision": 1.0,
+  "end_to_end": "61/61"
+ },
+ "fresh data, seed 2": {
+  "emails": 520,
+  "kind_accuracy": 1.0,
+  "defect_precision": 1.0,
+  "defect_recall": 1.0,
+  "field_f1": 1.0,
+  "review_recall": 1.0,
+  "review_precision": 1.0,
+  "end_to_end": "55/55"
+ },
+ "fresh data, seed 3": {
+  "emails": 520,
+  "kind_accuracy": 1.0,
+  "defect_precision": 1.0,
+  "defect_recall": 1.0,
+  "field_f1": 1.0,
+  "review_recall": 1.0,
+  "review_precision": 1.0,
+  "end_to_end": "61/61"
+ }
+}

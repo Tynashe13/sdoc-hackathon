@@ -77,6 +77,27 @@ To deploy the same image, use **Render** (New -> Web Service -> Docker) or **Goo
 On Cloud Run use `--max-instances 1` (results are held in memory, so a second instance would
 hold its own copy) and `--min-instances 1` to avoid a cold start.
 
+## Architecture
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagrams, the design decisions and the known limits.
+
+## Validation lab
+
+`python -m validation.run` writes [`validation/REPORT.md`](validation/REPORT.md) (seeded, rules only, no API calls):
+
+- **Field fuzzer** (`validation/fuzz.py`): real value pairs that agree are rewritten. Formatting changes must
+  still match, changes of meaning must be flagged, blanked values must go to a person.
+- **Document fuzzer** (`validation/fuzz_docs.py`): real SI/BL text files are re-laid-out, given wording the
+  extractor does not know (it must escalate, never report a clean pass), or given a real defect (it must be
+  found in the right field).
+- **Organisers' ground truth** (`python -m validation.run --organiser DIR`): the organisers' scorer on their
+  data and on three fresh datasets. Their files are not in this repository; only the scores are saved.
+- **Team-labelled sample**: `validation/label_packet/packet.html` holds 60 emails with no system answers.
+  Teammates label them, drop the CSVs into `validation/labels/`, and the report compares them with the system.
+
+The tests in `tests/test_validation.py` run the same fuzzers, so a change to the checking rules that breaks
+one fails the suite.
+
 ## Score (optional)
 
     python tools/score_cli.py submission.json --ground-truth path/to/ground_truth.json
