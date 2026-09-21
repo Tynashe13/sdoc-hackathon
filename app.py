@@ -1,7 +1,7 @@
 """Web app: an Apple-Mail-style inbox that shows every email's verification result.
 
 Run locally:   python app.py           -> http://localhost:5000
-Deploy:        gunicorn app:app --timeout 180
+Deploy:        Vercel (vercel --prod); Flask is picked up from this file as-is
 """
 import copy
 import csv
@@ -12,13 +12,13 @@ import re
 import sys
 import threading
 from datetime import datetime, timezone
-from pathlib import Path
 
-from flask import Flask, Response, abort, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
 
 import llm
 import pipeline
 import snapshot
+import store
 from classify import body_core
 from compare import field_table
 from extract import FIELDS
@@ -26,7 +26,6 @@ from loader import Inbox
 from readers import NoTextError, ReadError, pdf_page_pngs, read_attachment
 
 DATA_DIR = os.getenv("DATA_DIR", "data")
-REVIEWS_FILE = Path(os.getenv("REVIEWS_PATH", "reviews.json"))
 RESULTS_FILE = os.getenv("RESULTS_FILE", "results.json")
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -35,8 +34,7 @@ EMAILS = {e["email_id"]: e for e in inbox}
 ORDER = sorted(EMAILS)
 
 STATE = {"ready": False, "done": 0, "total": len(EMAILS), "results": {}, "error": None}
-LOCK = threading.Lock()
-REVIEWS = json.loads(REVIEWS_FILE.read_text()) if REVIEWS_FILE.exists() else {}
+STORE = store.open_store()
 
 
 # ---------------------------------------------------------------- processing
@@ -66,14 +64,23 @@ def _start():
 _start()
 
 
-def _save_reviews():
-    REVIEWS_FILE.write_text(json.dumps(REVIEWS, indent=2))
+def reviews():
+    """Reviewer decisions, read once per request (another instance may have written since)."""
+    if "reviews" not in g:
+        g.reviews = STORE.all()
+    return g.reviews
+
+
+def _decide(eid, review=None):
+    """Save a reviewer decision, or clear it when review is None."""
+    STORE.put(eid, review) if review else STORE.drop(eid)
+    g.pop("reviews", None)
 
 
 def effective(eid):
     """Machine result, overlaid with whatever a human reviewer decided."""
     res = copy.deepcopy(STATE["results"][eid])
-    rev = REVIEWS.get(eid)
+    rev = reviews().get(eid)
     if rev:
         res["review"] = rev
         res["resolved"] = True
@@ -147,7 +154,7 @@ def index():
 
 @app.get("/healthz")
 def healthz():
-    return "ok"
+    return jsonify(ok=True, ready=STATE["ready"], reviews=store.kind(STORE))
 
 
 @app.get("/api/emails")
@@ -192,11 +199,9 @@ def api_recheck(eid):
     if missing:
         return jsonify(error="Fill in every value first. Still empty or unusable: " + ", ".join(missing)), 400
     defects = [r["field"] for r in table if r["status"] == "mismatch"]
-    with LOCK:
-        REVIEWS[eid] = {"action": "corrected", "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                        "note": (body.get("note") or "").strip(), "si": si, "bl": bl, "table": table,
-                        "status": "MISMATCH" if defects else "OK", "defect_fields": defects}
-        _save_reviews()
+    _decide(eid, {"action": "corrected", "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "note": (body.get("note") or "").strip(), "si": si, "bl": bl, "table": table,
+                  "status": "MISMATCH" if defects else "OK", "defect_fields": defects})
     return jsonify(detail(eid))
 
 
@@ -206,10 +211,8 @@ def api_resolve(eid):
     if eid not in EMAILS or not STATE["ready"]:
         abort(404)
     body = request.get_json(force=True) or {}
-    with LOCK:
-        REVIEWS[eid] = {"action": "resolved", "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                        "note": (body.get("note") or "").strip()}
-        _save_reviews()
+    _decide(eid, {"action": "resolved", "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "note": (body.get("note") or "").strip()})
     return jsonify(detail(eid))
 
 
@@ -218,18 +221,14 @@ def api_retry(eid):
     """Run the whole check again for one email (clears any human decision)."""
     if eid not in EMAILS or not STATE["ready"]:
         abort(404)
-    with LOCK:
-        REVIEWS.pop(eid, None)
-        _save_reviews()
+    _decide(eid)
     STATE["results"][eid] = pipeline.process_email(inbox, EMAILS[eid])
     return jsonify(detail(eid))
 
 
 @app.delete("/api/emails/<eid>/review")
 def api_undo(eid):
-    with LOCK:
-        REVIEWS.pop(eid, None)
-        _save_reviews()
+    _decide(eid)
     return jsonify(detail(eid))
 
 

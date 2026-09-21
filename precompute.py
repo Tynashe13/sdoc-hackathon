@@ -20,7 +20,9 @@ def main(argv):
     import snapshot
     if check:
         fresh = snapshot.load(out, data_dir) is not None
-        print(f"{out} is up to date" if fresh else f"{out} is missing or out of date: run python precompute.py")
+        print(f"{out} is up to date" if fresh else
+              f"{out} is missing or does not match this checkout. If you changed the data or the checking "
+              "code, run python precompute.py. If you did not, a data file may be damaged: restore data/ from Git.")
         return 0 if fresh else 1
     import pipeline
     results = pipeline.run(data_dir)

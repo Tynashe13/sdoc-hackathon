@@ -21,7 +21,7 @@ except ImportError:
     pass
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")   # change in .env if AI Studio lists another
-CACHE = Path(".cache/llm")
+CACHE = Path("/tmp/llm-cache" if os.getenv("VERCEL") else ".cache/llm")   # Vercel's disk is read-only except /tmp
 _client, _tried = None, False
 
 CATEGORIES = {
@@ -72,8 +72,11 @@ def ask_json(prompt, images=()):
         try:
             reply = client.models.generate_content(model=MODEL, contents=parts, config=config)
             data = json.loads(reply.text)
-            CACHE.mkdir(parents=True, exist_ok=True)
-            cache_file.write_text(json.dumps(data))
+            try:
+                CACHE.mkdir(parents=True, exist_ok=True)
+                cache_file.write_text(json.dumps(data))
+            except OSError:
+                pass                                # no cache is fine, just slower next time
             return data
         except Exception as exc:
             code = getattr(exc, "code", None)

@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+tests/
+tools/
+*.patch
+.env
+.env.*
+ground_truth.json
+submission.json
+reviews.json
+.cache/
+Dockerfile
+docker-compose.yml
+.dockerignore
+Procfile

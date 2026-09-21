@@ -22,7 +22,9 @@ def _bytes(path):
 def fingerprint(data_dir):
     h = hashlib.sha256()
     for sub in ("inbox", "attachments"):
-        for p in sorted(q for q in (Path(data_dir) / sub).glob("*") if q.is_file()):
+        # email_* only (so stray files like Thumbs.db are ignored), sorted by name (not by Path,
+        # whose order differs between Windows and Linux)
+        for p in sorted((q for q in (Path(data_dir) / sub).glob("email_*") if q.is_file()), key=lambda q: q.name):
             h.update(p.name.encode())
             h.update(_bytes(p))
     for name in CODE:

@@ -18,8 +18,11 @@ RESULTS = "results.json"
 
 class TestCommittedSnapshot(unittest.TestCase):
     def test_snapshot_is_current(self):
-        self.assertIsNotNone(snapshot.load(RESULTS, DATA),
-                             "results.json is missing or out of date: run python precompute.py")
+        self.assertIsNotNone(
+            snapshot.load(RESULTS, DATA),
+            "results.json does not match this checkout. If you did not change the data or the checking "
+            "code, a data file was probably damaged by line-ending conversion (see .gitattributes): "
+            "restore data/attachments from Git. Only if you changed them on purpose, run python precompute.py")
 
     def test_snapshot_equals_a_live_run(self):
         snap = json.loads(Path(RESULTS).read_text())
