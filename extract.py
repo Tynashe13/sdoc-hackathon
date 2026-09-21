@@ -29,16 +29,33 @@ def doc_type(text: str) -> str:
     return "UNKNOWN"
 
 
-def extract_raw(text: str) -> dict:
-    """{field: raw value string or None}.  Continuation/address lines are ignored."""
+def extract_evidence(text: str) -> dict:
+    """{field: {"value", "line", "line_no"} or None}: each value together with the exact document
+    line it was read from (line_no counts from 1).  Continuation/address lines are ignored."""
     out = {f: None for f in FIELDS}
-    for line in text.splitlines():
+    for line_no, line in enumerate(text.splitlines(), 1):
         if line[:1].isspace():                      # indented address line
             continue
         for field, pat in _PATTERNS.items():
             m = pat.match(line)
             if m and out[field] is None:
                 value = m.group(1).strip()
-                out[field] = value or None
+                if value:
+                    out[field] = {"value": value, "line": line.strip(), "line_no": line_no}
                 break
     return out
+
+
+def extract_raw(text: str) -> dict:
+    """{field: raw value string or None}."""
+    return {f: (e["value"] if e else None) for f, e in extract_evidence(text).items()}
+
+
+def find_line(text: str, value: str):
+    """Where a value that did not come from a label (e.g. found by the AI) appears in the document:
+    {"line", "line_no"} for the first line containing it, or None."""
+    want = re.sub(r"\s+", " ", str(value)).strip().lower()
+    for line_no, line in enumerate(text.splitlines(), 1):
+        if want and want in re.sub(r"\s+", " ", line).lower():
+            return {"line": line.strip(), "line_no": line_no}
+    return None

@@ -146,7 +146,9 @@ def same(field, s, b):
     if field == "container_count":
         return _same_containers(s, b)
     if field == "gross_weight_kg":
-        return abs(s[0] - b[0]) <= s[1] + b[1] + 1e-9
+        # equal only if the two rounding intervals overlap; touching at the edge is not enough,
+        # or "131,058 KG" and "131,059 KG" would count as the same weight
+        return abs(s[0] - b[0]) < s[1] + b[1] - 1e-9
     return s == b
 
 

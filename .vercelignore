@@ -10,7 +10,5 @@ ground_truth.json
 submission.json
 reviews.json
 .cache/
-Dockerfile
-docker-compose.yml
-.dockerignore
-Procfile
+validation/
+docs/
