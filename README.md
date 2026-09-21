@@ -23,6 +23,8 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 | `email_501` | Wrong document: the "BL" attachment is really an invoice |
 | `email_512`, `513`, `514` | Scanned pages: read by Gemini as a *suggestion*, tagged **AI-assisted**, with a disclaimer |
 | `email_519`, `520` | Blank values: Gemini was asked and found nothing, so a grey note says so |
+| Any quoted line | Click it, or an attachment, to open the **Test lab**: the whole document with the line each value was read from marked green, red or amber |
+
 
 ## What was measured
 
@@ -33,7 +35,7 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 | Document fuzzer | 890 layout changes keep their verdict; unfamiliar wording is always escalated (267 of 267); 1,948 injected defects found in the right field |
 | Organisers' ground truth | 100% on the given data and three freshly generated datasets (synthetic, so this is saturated: the fuzzers are the harder test) |
 | A real bug found by the fuzzers | Weights 1 kg apart counted as equal. Fixed and covered by a test |
-| Automated tests | 92 |
+| Automated tests | 120 |
 
 Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.md). The team-labelled sample
 (60 emails labelled by hand, blind to the system) is built but not yet labelled, and the report says so.
@@ -48,13 +50,21 @@ Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.m
 - **Gemini is optional and guarded.** It can classify an email the rules cannot place, fill a missing field only if
   it quotes a line that really is in the document, and read a scanned page as a suggestion. Anything it touches is
   tagged, carries a disclaimer, and needs a person to confirm it.
-- **Gemini also writes the plain-language reason** for every mismatch and every case that needs review
-  (`python explain.py`, about three requests). It is given only the compared values, is never asked to decide,
-  and its sentence is kept only if it mentions the values it explains. It is tagged `AI`, appears in the app and in
-  the CSV report, and disappears if a person corrects the case.
+- **Gemini writes the plain-language reason** for every mismatch and every case that needs review
+  (`python explain.py`, about three requests; all 66 cases in the demo inbox have one in `explanations.json`).
+  It is given only the compared values, is never asked to decide, and its sentence is kept only if it mentions the
+  values it explains. It is tagged `AI`, appears in the app and in the CSV report, and disappears if a person
+  corrects the case. If the main model is busy or out of quota, the step falls back to another Gemini model.
+- **The Test lab shows the proof in place.** Click a quoted line or an attachment and the whole document opens
+  beside the comparison, with every line a value was read from marked. Nothing is decided there: it uses the same
+  evidence as the quotes, and the tests check each marked line is exactly the quoted line.
 - **Resilience.** Live AI calls are optional: the results and explanations are built offline and saved, so the site
   makes no Gemini calls while people browse it. If Gemini is busy or out of quota, Retry keeps the saved result.
   Adding a second AI provider (with the scan readings re-checked against the pages) is on the roadmap.
+- **Hardening.** One bad email becomes a "needs review" case instead of stopping the app; a corrupt AI cache file
+  is ignored; a single rejected request no longer switches AI off for good; if the reviews database is unreachable
+  the inbox still loads and saves fail with a clear message; posted data must be JSON and is size-capped; the CSV
+  export neutralises spreadsheet formulas; every error a person can see is a plain sentence. Each has a test.
 - **The AI results in this repo come from real calls.** For the three scanned emails (512 to 514) the values in
   `results.json` were produced by Gemini reading the scanned pages, and were then checked against the pages by hand:
   21 of 21 values matched. Nothing is typed in.
@@ -66,49 +76,110 @@ Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.m
 - On scanned emails only the SI page is read by Gemini; the BL side is left for the reviewer.
 - Only cases that need review can be edited in the app.
 
+## Notes for judges
+
+- The demo database is shared: anyone who saves, resolves or undoes a case changes what the next person sees, so the
+  counts may differ from the video. The baseline is 63 no mismatch, 46 mismatches, 20 needing review, 91 awaiting the draft BL.
+- **Retry** is a demo action. The precomputed results are the reference; Retry re-checks one email on one server.
+- Gemini is optional. Everything works without it, and it never decides a verdict.
+- There is no login on purpose, so anyone can try it. Authentication is on the roadmap.
+
 ## Setup
 
-1. Install Python 3.12 or newer
-2. In this folder run: `pip install -r requirements.txt`
-3. Put the inbox data in `data/` (it must contain `inbox/` and `attachments/`)
 
-## Run
+ Running  it on your own computer
 
-    python pipeline.py data
+**You need:** Python 3.9 or newer 
 
-This writes `submission.json` with one result per email.
+**1. Download the project**
 
-## AI layer (Gemini)
+```
+git clone https://github.com/Tynashe13/sdoc-hackathon.git
+cd sdoc-hackathon
+```
 
-Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. With no key the program still
-runs, rules-only. The AI is used only where rules are not enough:
+**2. Install the libraries**
 
-| Situation | What the AI does | Safety net |
-|---|---|---|
-| Email the keyword rules cannot place | Classifies it from the body | Falls back to GENERAL if the API fails |
-| A field label the rules do not recognise | Finds the value in the document | Accepted only if the quoted line really appears in the document |
-| Scanned / image-only PDF | Reads the page image | Result is a *suggestion*: the case still goes to a human with the page and the AI reading |
+```
+pip install -r requirements.txt
+```
 
-Every email the AI contributed to is tagged **AI-assisted** (in the list, in the sidebar and on the email) and carries a
-disclaimer; a value the AI found is marked `AI` in the comparison table. When the AI was asked but found nothing, a
-grey note says so, and nothing is tagged. If Gemini is busy or out of quota, that is recorded as a failure, never as
-"found nothing".
+If `pip` is not recognized, use `python -m pip install -r requirements.txt`. On Mac or Linux, use `python3` and `pip3` in place of `python` and `pip`.
 
-Every answer is cached in `.cache/`, so re-runs cost no API calls. To rebuild `results.json` with Gemini (about five
-requests, capped): `python precompute.py --with-ai`. It refuses to write the file if any call failed.
-Test the wiring without any API key: `python -m unittest discover -s tests -t . -v`
+**3. Add your Gemini API key**
 
-## Web app (Apple-Mail-style inbox)
+The AI reads scanned PDFs, finds fields the rules miss, and classifies unusual emails, so the app needs a key to use it.
 
-    python app.py          # then open http://localhost:5000
+a. Get a free key at https://aistudio.google.com ("Get API key").
 
-Every email appears as a message. Document-check emails show the seven fields side by side
-(SI vs draft BL) with mismatches highlighted. Cases the system cannot decide land in
-**Needs review** with the source documents, the reason, and editable values; a person
-confirms or corrects them, and the report updates. **Retry** re-runs one email, and
-**Export discrepancy report** downloads a CSV.
+b. Copy the example settings file to a new file named `.env`:
+- Windows: `copy .env.example .env`
+- Mac or Linux: `cp .env.example .env`
 
-### Deploy (Vercel + Supabase)
+c. Open `.env` and fill in these two lines, with no spaces around `=` and no quote marks:
+
+```
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-3.6-flash
+```
+
+d. Check that the key works:
+
+```
+python check_gemini.py
+```
+
+It should print `SUCCESS`. If it says the model is not found, replace `GEMINI_MODEL` with a current Flash model name listed in AI Studio, and run the check again. To see which Flash models your key can use right now, run `python check_gemini.py --models`.
+
+**4. Start the app**
+
+```
+python app.py
+```
+
+Wait for the line `Running on http://127.0.0.1:5000`. Leave this terminal open.
+
+**5. Open the app**
+
+Go to **http://localhost:5000** in a browser. You will see a "Reading the inbox..." progress bar for about 10 seconds, then the mail interface with 520 emails. Check the bottom-left of the sidebar: it should say **Gemini AI connected**.
+
+### What to try first
+
+1. **See the AI at work.** Click **Needs review**, type `email_512` in the search box, and open it. This one is a scanned PDF with no text. You will see the scanned page, and Gemini's reading of it pre-filled in the boxes and highlighted. A person checks each value, then clicks **Save & re-check**.
+2. **See a comparison.** Click **Mismatches** and open any message. The seven fields appear with the SI and BL values side by side, with the mismatched rows highlighted.
+3. **Export the results.** Click **Export discrepancy report** in the sidebar to download a CSV.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `No module named 'flask'` (or another module) | Step 2 did not finish. Run the install command again. |
+| Sidebar says "AI off" | The file must be named exactly `.env` (not `.env.txt`), sit in the same folder as `app.py`, and contain your key. Save it, then restart the app. |
+| A 404 error mentioning the model | Set `GEMINI_MODEL` in `.env` to a current Flash model name from AI Studio. |
+| `Address already in use` | Something else is using port 5000. Mac or Linux: `PORT=5001 python app.py`. Windows PowerShell: `$env:PORT=5001; python app.py`. Then open http://localhost:5001. |
+| The progress bar stays up a long time | Wait up to a minute on the first run; it is reading all 520 emails. |
+
+### Run the tests and scoring tool
+
+```
+python -m unittest discover -s tests -t . -v
+python pipeline.py data
+python tools/score_cli.py submission.json --ground-truth path/to/ground_truth.json
+```
+
+The tests use a simulated AI, so they need no key. The scoring tool needs the organizers' `ground_truth.json`, which is not included in this repository.
+
+### Rebuild the saved AI results (optional)
+
+```
+python precompute.py --with-ai
+python explain.py
+```
+
+The first rebuilds `results.json` (Gemini reads the three scanned emails; about five requests, capped) and refuses to write the file if any call failed. The second writes `explanations.json`, the plain-language reasons (about three requests, with a fallback to another model when the main one is busy). Answers are cached in `.cache/`, so re-runs cost no API calls.
+
+
+## Deploy (Vercel + Supabase)
 
 The app runs on Vercel and keeps reviewer decisions in Supabase. Pushing to `main` deploys it; other branches
 get a private preview.
@@ -158,10 +229,6 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagrams, the design 
 The tests in `tests/test_validation.py` run the same fuzzers, so a change to the checking rules that breaks
 one fails the suite.
 
-## Score (optional)
-
-    python tools/score_cli.py submission.json --ground-truth path/to/ground_truth.json
-
 ## Project layout
 
 | File | Job |
@@ -170,7 +237,7 @@ one fails the suite.
 | `readers.py`  | Turn txt / pdf / docx / xlsx attachments into plain text |
 | `extract.py`  | Find the 7 fields, whatever the label wording, and keep the source line of each |
 | `compare.py`  | Normalise values and compare SI vs BL |
-| `llm.py`      | Optional Gemini helpers (cached, retried, capped, never crash the run) |
+| `llm.py`      | Optional Gemini helpers (cached, retried, capped, with a fallback model; never crash the run) |
 | `explain.py`  | Gemini-written plain-language reasons for mismatches and review cases (checked, saved, never deciding) |
 | `pipeline.py` | Runs everything and produces one result per email |
 | `app.py` + `static/index.html` | The web app (API + Apple-Mail-style interface) |
@@ -180,4 +247,4 @@ one fails the suite.
 | `docs/` | Architecture diagrams and the architecture document |
 | `supabase/schema.sql` | The one table the app needs |
 | `vercel.json` | Vercel settings |
-| `tests/` | 92 automated tests |
+| `tests/` | 120 automated tests |
