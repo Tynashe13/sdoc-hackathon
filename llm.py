@@ -27,6 +27,8 @@ CALLS = 0            # real requests sent to Gemini so far in this run
 MAX_CALLS = None     # optional cap on those requests: a bad night of retries must not eat the whole daily allowance
 _quota_hit_at = 0.0
 QUOTA_COOLDOWN = 600  # seconds: a long-running server tries Gemini again after this, in case the allowance has reset
+_disabled_at = 0.0   # when a bad request or key switched AI off; it is tried again after QUOTA_COOLDOWN
+QUOTA_WAIT = 60      # seconds to wait after a first 429 before one more try (the web app shortens this)
 _quota_hit = False   # the key has used up its Gemini allowance: stop asking, every further call would fail too
 FAILED = []          # one entry per call that gave up (busy or broken service), so callers can tell "found nothing" from "unavailable"
 ATTEMPTS = 5        # a busy server (503) usually recovers within a minute
@@ -43,7 +45,9 @@ CATEGORIES = {
 
 
 def _get_client():
-    global _client, _tried
+    global _client, _tried, _disabled_at
+    if _tried and _disabled_at and time.time() - _disabled_at > QUOTA_COOLDOWN:
+        _tried, _disabled_at = False, 0.0     # one rejected request must not switch AI off for good
     if _tried:
         return _client
     _tried = True
@@ -71,8 +75,10 @@ def ask_json(prompt, images=()):
         return None
     digest = hashlib.sha256(MODEL.encode() + prompt.encode() + b"".join(images)).hexdigest()
     cache_file = CACHE / f"{digest}.json"
-    if cache_file.exists():
-        return json.loads(cache_file.read_text())
+    try:
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass                                        # no cache, or a half-written one: ask again
     if _quota_hit and time.time() - _quota_hit_at > QUOTA_COOLDOWN:
         _quota_hit = False
     if _quota_hit:
@@ -99,7 +105,9 @@ def ask_json(prompt, images=()):
             print("[llm] Gemini answered", file=sys.stderr, flush=True)
             try:
                 CACHE.mkdir(parents=True, exist_ok=True)
-                cache_file.write_text(json.dumps(data))
+                tmp = cache_file.with_suffix(f".{os.getpid()}.tmp")
+                tmp.write_text(json.dumps(data), encoding="utf-8")
+                os.replace(tmp, cache_file)         # a reader never sees a half-written file
             except OSError:
                 pass                                # no cache is fine, just slower next time
             return data
@@ -109,8 +117,8 @@ def ask_json(prompt, images=()):
                   f"{str(exc)[:300]}", file=sys.stderr)
             if code == 429:                        # quota: hammering it every few seconds only makes it worse
                 if attempt == 0:
-                    print("[llm] quota exceeded (429): waiting 60 seconds and trying once more", file=sys.stderr, flush=True)
-                    time.sleep(60)
+                    print(f"[llm] quota exceeded (429): waiting {QUOTA_WAIT} seconds and trying once more", file=sys.stderr, flush=True)
+                    time.sleep(QUOTA_WAIT)
                     continue
                 _give_up_on_quota()
                 return None
@@ -135,9 +143,9 @@ def _give_up_on_quota():
 
 
 def _disable(why):
-    global _client
+    global _client, _disabled_at
     print(f"[llm] {why}", file=sys.stderr)
-    _client = None
+    _client, _disabled_at = None, time.time()
 
 
 def classify_email(email, body):
@@ -162,7 +170,7 @@ def _norm(s):
 def fill_missing(text, fields):
     """Ask Gemini only for fields the rules could not find.  A value is accepted only when
     the line it quotes really appears in the document - this blocks made-up answers."""
-    if not enabled() or not fields:
+    if not text or not enabled() or not fields:
         return {}
     prompt = (
         "Below is a shipping document.  Find these fields, wording may differ from the names "

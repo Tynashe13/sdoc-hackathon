@@ -187,6 +187,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .bar{height:6px;border-radius:6px;background:var(--fill2);overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .4s}
 #toast{position:fixed;z-index:9;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;padding:10px 16px;border-radius:12px;background:rgba(30,30,34,.86);color:#fff;font-size:13px;pointer-events:none;transition:.25s;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.problem{background:rgba(120,34,34,.94);max-width:min(92vw,460px);text-align:center;line-height:1.4}
 
 /* ---------- smaller laptop windows: slimmer columns so the comparison table keeps its room ---------- */
 @media (max-width:1360px){
@@ -259,7 +260,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
     <div id="boot"><div class="box"><h3>Reading the inbox…</h3><p id="bootMsg">Classifying emails and comparing documents</p><div class="bar"><i id="bootBar"></i></div></div></div>
   </main>
 </div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <svg width="0" height="0" style="position:absolute">
   <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13l2-6.5A2 2 0 0 1 7.9 5h8.2A2 2 0 0 1 18 6.5L20 13"/><path d="M4 13v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4h-4.5a3.5 3.5 0 0 1-7 0z"/></symbol>
@@ -319,10 +320,20 @@ const BOXES = [
 const state = {emails:[], box:'all', q:'', sel:null, detail:null};
 
 /* ------------------------------------------------ data */
+const PLAIN = {
+  400:'Something in that request was not right. Check the values and try again.',
+  404:'That email could not be found. Refresh the page and try again.',
+  413:'That is too long. Shorten the note or the values and try again.',
+  429:'Too many requests at once. Wait a moment and try again.',
+  503:'The service is busy right now. Nothing was changed. Try again in a moment.'};
+const WRONG = 'Something went wrong on our side. Nothing was changed. Try again in a moment.';
+const OFFLINE = 'Cannot reach the server. Check your internet connection and try again.';
 async function api(url, opt){
-  const r = await fetch(url, opt);
+  let r;
+  try{ r = await fetch(url, opt); }
+  catch(e){ throw new Error(OFFLINE); }                        // never show "Failed to fetch"
   const j = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(j.error || r.statusText);
+  if(!r.ok) throw new Error(j.error || PLAIN[r.status] || WRONG);   // never show a status code or "BAD REQUEST"
   return j;
 }
 async function boot(){
@@ -337,7 +348,7 @@ async function boot(){
     if(j.error){ $('#boot h3').textContent='Something went wrong'; $('#bootMsg').textContent=j.error; return; }
     if(j.ready){
       state.emails = j.emails; setAI(j.ai);
-      $('#boot').remove(); renderAll();
+      $('#boot').remove(); renderAll(); noteReviewsDown(j);
       const linked = decodeURIComponent(location.hash.slice(1));      // e.g. /#email_004 opens that email
       if(state.emails.some(e=>e.id===linked)) select(linked, true);
       return;
@@ -351,7 +362,17 @@ function setAI(on){
   const p=$('#aipill'); p.className='pill-ai'+(on?' on':'');
   p.querySelector('span').textContent = on ? 'Gemini AI connected' : 'AI off · rules only';
 }
-async function refreshList(){ const j = await api('/api/emails'); state.emails = j.emails; renderSidebar(); renderList(); }
+async function refreshList(){
+  const j = await api('/api/emails'); state.emails = j.emails; renderSidebar(); renderList(); noteReviewsDown(j);
+}
+let warnedReviews = false;
+function noteReviewsDown(j){                                    // the inbox still works when saved decisions cannot load
+  if(j.reviews_available === false && !warnedReviews){
+    warnedReviews = true;
+    toast('Saved decisions cannot be loaded right now. You can still read every result, but changes may not save.', true);
+  }
+  if(j.reviews_available !== false) warnedReviews = false;
+}
 
 /* ------------------------------------------------ helpers */
 const attention = e => (e.status==='MISMATCH' && !e.human) || (e.status==='NEEDS_REVIEW' && !e.resolved);
@@ -369,7 +390,10 @@ function visible(){
   const box = BOXES.find(b=>b.id===state.box), q = state.q.trim().toLowerCase();
   return state.emails.filter(e => box.test(e) && (!q || (e.name+' '+e.from+' '+e.subject+' '+e.preview+' '+e.id).toLowerCase().includes(q)));
 }
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(msg, problem){
+  const t=$('#toast'); t.textContent=msg; t.classList.toggle('problem', !!problem); t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), problem ? 7000 : 2600);   // a problem stays long enough to read
+}
 const setView = v => $('#app').dataset.view = v;
 
 /* ------------------------------------------------ sidebar */
@@ -536,8 +560,11 @@ function renderReader(){
 
 /* ------------------------------------------------ actions */
 async function act(url, opt, msg){
-  try{ state.detail = await api(url, opt); renderReader(); await refreshList(); toast(state.detail.kept ? 'Gemini is busy, so the saved result was kept.' : msg); }
-  catch(e){ toast(e.message); }
+  try{ state.detail = await api(url, opt); }
+  catch(e){ toast(e.message, true); return; }                   // the form stays as it was, so nothing typed is lost
+  renderReader();
+  try{ await refreshList(); }catch(e){}                         // the change was saved; a failed list refresh is not a failed save
+  toast(state.detail.kept ? 'Gemini is busy, so the saved result was kept.' : msg);
 }
 const post = body => ({method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
 $('#reader').addEventListener('click', ev=>{
