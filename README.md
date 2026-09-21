@@ -22,19 +22,6 @@ Open the live demo and use the search box, or add `#email_004` to the address to
 | `email_512`, `513`, `514` | Scanned pages: read by Gemini as a *suggestion*, tagged **AI-assisted**, with a disclaimer |
 | `email_519`, `520` | Blank values: Gemini was asked and found nothing, so a grey note says so |
 
-## What was measured
-
-| | |
-|---|---|
-| Emails in the demo inbox | 520 (220 document checks: 63 clean, 46 mismatch, 20 for review, 91 waiting for the draft BL) |
-| Field fuzzer | 1,274 formatting-only changes still match, 1,572 real defects caught, 988 blanked values sent to a person |
-| Document fuzzer | 890 layout changes keep their verdict; unfamiliar wording is always escalated (267 of 267); 1,948 injected defects found in the right field |
-| Organisers' ground truth | 100% on the given data and three freshly generated datasets (synthetic, so this is saturated: the fuzzers are the harder test) |
-| A real bug found by the fuzzers | Weights 1 kg apart counted as equal. Fixed and covered by a test |
-| Automated tests | 71 |
-
-Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.md). The team-labelled sample
-(60 emails labelled by hand, blind to the system) is built but not yet labelled, and the report says so.
 
 ## How it decides
 
