@@ -55,6 +55,8 @@ Details, the method and the limits: [`validation/REPORT.md`](validation/REPORT.m
   It is given only the compared values, is never asked to decide, and its sentence is kept only if it mentions the
   values it explains. It is tagged `AI`, appears in the app and in the CSV report, and disappears if a person
   corrects the case. If the main model is busy or out of quota, the step falls back to another Gemini model.
+  The sidebar's **AI-assisted** filter lists these 66 emails: every mismatch and review case (46 + 20), which includes
+  the three scans Gemini read. Gemini never decides any of them.
 - **The Test lab shows the proof in place.** Click a quoted line or an attachment and the whole document opens
   beside the comparison, with every line a value was read from marked. Nothing is decided there: it uses the same
   evidence as the quotes, and the tests check each marked line is exactly the quoted line.

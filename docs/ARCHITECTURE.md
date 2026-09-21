@@ -15,7 +15,7 @@ Vector versions: [architecture.svg](architecture.svg), [deployment.svg](deployme
 | Extract | `extract.py` | Label patterns find the 7 fields under different wordings and keep the exact source line. | A field that cannot be found is missing, so the case goes to a person. |
 | Compare | `compare.py` | Names, ports, containers and weights are normalised, then compared per field. | Deterministic. The AI is never asked whether two values match. |
 | Explain | `explain.py` | Gemini writes one or two plain sentences saying what differs in each mismatch and why each review case needs a person. It sees only the compared values and never decides. | A sentence that does not mention the values is dropped and a fixed sentence is used instead. |
-| Serve | `app.py`, `static/index.html` | Inbox, comparison table with source quotes, review form, CSV report. | |
+| Serve | `app.py`, `static/index.html` | Inbox, comparison table with source quotes, the Test lab (a document opened with every source line marked), review form, CSV report. | A failure shows a plain-language message, never a status code. An email that cannot be processed becomes a review case. |
 | Decide | `store.py` | A person confirms or corrects values. The decision is saved (Supabase, or a local file) and the comparison is recomputed. | |
 
 Verdicts: **OK**, **MISMATCH** (with the differing fields), **NEEDS REVIEW** (wrong document, missing attachment,
@@ -44,6 +44,20 @@ unreadable scan, blank value) and **AWAITING** (only the draft BL was requested)
   live site makes no Gemini calls while people browse it. If Gemini is busy or out of quota, Retry keeps the saved
   result and the reviewer's decision. A second AI provider is on the roadmap, but only with the scan readings
   re-checked against the pages, because the evidence for AI quality was gathered on Gemini.
+- **What "AI-assisted" means.** An email carries the tag when Gemini read a scan for it, filled a value, classified it
+  or wrote its plain-language reason. In the demo inbox that is 66 emails: every mismatch and review case (46 + 20),
+  including the three scans. The verdict on each still comes from the rules.
+- **The Test lab is a view, not a decision.** Clicking a quote or an attachment opens the whole document beside the
+  comparison, with the lines every value was read from marked (green match, red mismatch, amber needs a person). It
+  reuses the evidence the quotes already carry, so it adds no new source of truth; the tests check that each marked
+  line is exactly the quoted line. Scans show the page image instead, because there are no text lines to mark.
+- **Model fallback for wording only.** The plain-language reasons can fall back to another Gemini model when the
+  main one is busy (503), out of quota (429) or missing (404); each model has its own allowance. A bad key stops the
+  search. The scan readings stay on the model they were checked on, and a reason is kept only if it mentions the
+  compared values.
+- **Failure handling.** One bad email becomes a review case, a corrupt AI cache file is ignored, a database outage
+  leaves the inbox readable and makes saves fail with a clear message, posted data must be JSON and size-capped, and
+  the CSV export neutralises spreadsheet formulas. Each has an automated test (120 tests in total).
 - **Deploy from Git.** Pushing to `main` deploys; other branches get a private preview.
 
 ## Known limits
