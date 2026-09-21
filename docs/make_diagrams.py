@@ -196,13 +196,10 @@ def deployment():
     s.arrow([(1122, 515), (1288, 515)], AI[1], dash=True)
     s.text(1205, 500, "if a key is set", 13.5, 700, AI[1], "middle")
 
-    s.rect(40, 730, 1080, 128, ("#f7f7f9", LINE))
+    s.rect(40, 730, 1520, 128, ("#f7f7f9", LINE))
     s.text(60, 762, "Start-up", 17, 700)
     s.text(60, 788, "A fingerprint (SHA-256 of the inbox files and the checking code) is compared with results.json. If it matches, the app is ready in about a second. "
-           "If not, the verdicts are recomputed in the background and the page shows progress. Nothing stale is ever served silently.", 14.5, 400, width=1040)
-    s.rect(1290, 730, 270, 128, GRAY, dash=True)
-    s.text(1310, 762, "Also runs as", 17, 700)
-    s.text(1310, 788, "a Docker image (docker compose up): same code, decisions kept in a local file.", 14.5, 400, width=232)
+           "If not, the verdicts are recomputed in the background and the page shows progress. A stale snapshot is never used.", 14.5, 400, width=1480)
     s.save("deployment.svg")
 
 

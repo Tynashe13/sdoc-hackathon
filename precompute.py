@@ -26,8 +26,20 @@ def main(argv):
         return 0 if fresh else 1
     import pipeline
     results = pipeline.run(data_dir)
+    if with_ai:
+        import llm
+        if llm.FAILED:
+            print(f"{len(llm.FAILED)} Gemini call(s) failed ({llm.FAILED[0]}), so {out} was NOT written: a snapshot built "
+                  "while Gemini was down would have no AI readings in it. Try again in a few minutes; the answers that "
+                  "did arrive are cached, so only the failed ones are asked again.")
+            return 1
     snapshot.save(out, data_dir, results, ai=with_ai)
-    print(f"wrote {out} for {len(results)} emails")
+    if with_ai:
+        used = sorted(e for e, r in results.items() if r.get("ai_assisted") or r.get("ai_consulted"))
+        print(f"wrote {out}: {len(results)} emails in the file, Gemini was used on only {len(used)} of them "
+              f"({', '.join(used) or 'none'}); the other {len(results) - len(used)} are unchanged")
+    else:
+        print(f"wrote {out} for {len(results)} emails")
     return 0
 
 

@@ -37,8 +37,8 @@ unreadable scan, blank value) and **AWAITING** (only the draft BL was requested)
   checking code. A matching fingerprint means the app is ready in about a second on a serverless host. A mismatch
   means it recomputes instead of showing stale results.
 - **Stateless server, external decisions.** Serverless instances are short-lived, so reviewer decisions live in
-  Supabase (row-level security on, only the server holds the key) and are read on every request. Locally, or in
-  Docker, a JSON file does the same job.
+  Supabase (row-level security on, only the server holds the key) and are read on every request. Running on your own
+  machine without Supabase, a JSON file does the same job.
 - **Deploy from Git.** Pushing to `main` deploys; other branches get a private preview.
 
 ## Known limits

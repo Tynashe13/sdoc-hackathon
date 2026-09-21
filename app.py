@@ -92,6 +92,22 @@ def effective(eid):
     return res
 
 
+def _kept_evidence(eid, si, bl):
+    """The source line of every value a person left unchanged, so a correction keeps its quotes.
+    A value that was edited has no source line any more, so it gets none."""
+    res = STATE["results"][eid]
+    orig_si = {r["field"]: r["si"] for r in res.get("table") or []}
+    orig_bl = {r["field"]: r["bl"] for r in res.get("table") or []}
+    ev_si = {r["field"]: r.get("si_evidence") for r in res.get("table") or []}
+    ev_bl = {r["field"]: r.get("bl_evidence") for r in res.get("table") or []}
+    form = res.get("form")
+    if form:
+        orig_si, orig_bl = form["si"], form["bl"]
+        ev_si, ev_bl = form.get("si_evidence", {}), form.get("bl_evidence", {})
+    keep = lambda now, was, ev: {f: ev[f] for f in ev if ev.get(f) and now.get(f) == was.get(f)}
+    return keep(si, orig_si, ev_si), keep(bl, orig_bl, ev_bl)
+
+
 # ---------------------------------------------------------------- helpers
 def sender(addr):
     local = addr.split("@")[0]
@@ -142,7 +158,8 @@ def detail(eid):
     name, initials, hue = sender(e["from"])
     return {**summary(eid), "body": e["body"], "decided_by": r["decided_by"], "detail": r["detail"] if "detail" in r else "",
             "table": r.get("table"), "form": r.get("form"), "ai_notes": r.get("ai_notes", []),
-            "ai_suggestion": r.get("ai_suggestion"), "review": r.get("review"),
+            "ai_suggestion": r.get("ai_suggestion"), "ai_consulted": r.get("ai_consulted", []),
+            "review": r.get("review"),
             "files": attachment_info(eid), "fields": FIELDS}
 
 
@@ -194,7 +211,7 @@ def api_recheck(eid):
     body = request.get_json(force=True) or {}
     si = {f: (str(body.get("si", {}).get(f) or "").strip() or None) for f in FIELDS}
     bl = {f: (str(body.get("bl", {}).get(f) or "").strip() or None) for f in FIELDS}
-    table = field_table(si, bl)
+    table = pipeline.with_evidence(field_table(si, bl), *_kept_evidence(eid, si, bl))
     missing = [r["field"] for r in table if r["status"] == "missing"]
     if missing:
         return jsonify(error="Fill in every value first. Still empty or unusable: " + ", ".join(missing)), 400
@@ -238,7 +255,7 @@ def api_report():
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["email_id", "from", "subject", "result", "review_reason", "mismatched_fields",
-                "details (SI vs BL)", "human_reviewed"])
+                "details (SI vs BL)", "human_reviewed", "ai_assisted"])
     for eid in ORDER:
         r = effective(eid)
         if r["category"] != "BL_COMPARISON":
@@ -251,7 +268,8 @@ def api_report():
         w.writerow([eid, e["from"], e["subject"], result, r["review_reason"] or "",
                     ", ".join(r["defect_fields"]),
                     "; ".join(f"{x['field']}: SI {x['si']} / BL {x['bl']}" for x in bad) or r.get("detail", ""),
-                    "yes" if r.get("human_reviewed") or r.get("resolved") else "no"])
+                    "yes" if r.get("human_reviewed") or r.get("resolved") else "no",
+                    "yes" if r.get("ai_assisted") else "no"])
     return Response(buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="discrepancy_report.csv"'})
 

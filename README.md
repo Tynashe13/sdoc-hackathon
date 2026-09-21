@@ -40,22 +40,20 @@ Every email appears as a message. Document-check emails show the seven fields si
 confirms or corrects them, and the report updates. **Retry** re-runs one email, and
 **Export discrepancy report** downloads a CSV.
 
-### Deploy (Render, free tier)
+### Deploy (Vercel + Supabase)
 
-1. Push this folder to GitHub (`.env` is git-ignored, so your key is not uploaded).
-2. On render.com: New -> Web Service -> pick the repo.
-3. Build command: `pip install -r requirements.txt`  Start command: `gunicorn app:app --workers 1 --threads 4 --timeout 180`
-4. Environment: add `GEMINI_API_KEY` and `GEMINI_MODEL` as secrets.
-5. Keep it to ONE worker: results are held in memory.
+The app runs on Vercel and keeps reviewer decisions in Supabase. Pushing to `main` deploys it; other branches
+get a private preview.
 
-### Run or deploy with Docker
+1. In Vercel, import the GitHub repo (it detects Flask from `vercel.json`).
+2. Add Supabase to the project (Storage tab). This sets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. In Supabase, open the SQL Editor and run `supabase/schema.sql` once.
+4. Optional: add `GEMINI_API_KEY` (and `GEMINI_MODEL`) in the project's environment variables. Without a
+   key the app runs rules-only. Environment changes need a redeploy.
+5. Check `/healthz` on the live URL: it should say `"ready":true` and `"reviews":"supabase"`.
 
-    docker compose up --build      # then open http://localhost:5000
-
-The image pins the exact library versions in `constraints.txt`, so it runs the same
-everywhere. The Gemini key is read from your shell or a `.env` next to `docker-compose.yml`
-and is passed in when the container starts, never copied into the image. With no key the
-app runs rules-only. Reviewer decisions are kept in a Docker volume across restarts.
+Run it on your own machine with `pip install -r requirements.txt` and `python app.py`. Without the Supabase
+variables, reviewer decisions are kept in a local `reviews.json` (git-ignored).
 
 **Evidence for every value.** Each value in the comparison table (and in the review form) is shown with
 the exact line of the source document it was read from, plus the file name and line number, so a person
@@ -63,19 +61,13 @@ can check it at a glance. The tests confirm that every quoted line is verbatim l
 and contains the displayed value; a value the AI finds is accepted only if it quotes a real line.
 
 **Fast start-up.** `results.json` holds the checked results for every email, so the app is ready
-the moment it starts instead of re-reading every attachment (slow on a small free host). It is
+the moment it starts instead of re-reading every attachment (slow on a serverless host). It is
 tied to the data and the checking code by a fingerprint: if either changes, the app ignores the
 file, says so in its log, and computes live. After changing the data or the rules, run
 `python precompute.py` and commit the new `results.json` (`python precompute.py --check` tells
 you whether it is up to date; the test suite checks it too). Only do that on a checkout whose
 data files are intact: on Windows, Git can rewrite the line endings inside small PDFs and break
 them, which is why `.gitattributes` marks attachments as binary.
-
-To deploy the same image, use **Render** (New -> Web Service -> Docker) or **Google Cloud Run**
-(`gcloud run deploy --source .`). Both set `PORT` themselves. Add `GEMINI_API_KEY` and
-`GEMINI_MODEL` in the host's environment settings, then redeploy after any change to them.
-On Cloud Run use `--max-instances 1` (results are held in memory, so a second instance would
-hold its own copy) and `--min-instances 1` to avoid a cold start.
 
 ## Architecture
 

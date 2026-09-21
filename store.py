@@ -4,7 +4,7 @@ On Vercel every request can land on a different short-lived instance and the dis
 so decisions cannot sit in a global dict or a file.  If Supabase is configured
 (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, which the Vercel Marketplace integration sets) they
 go there, in one table.  Otherwise they go to a JSON file (REVIEWS_PATH), which is what running
-locally or in Docker uses.  Either way the rest of the app only sees all() / put() / drop().
+running on your own machine uses.  Either way the rest of the app only sees all() / put() / drop().
 """
 import json
 import os

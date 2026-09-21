@@ -98,6 +98,7 @@ a.btn{text-decoration:none;color:var(--text)}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--fill);color:var(--text2)}
 .chip.red{background:var(--red-bg);color:var(--red)}.chip.green{background:var(--green-bg);color:var(--green)}
 .chip.orange{background:var(--orange-bg);color:#c66f00}.chip.blue{background:var(--blue-bg);color:var(--accent)}
+.aitag{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:0 6px;border-radius:10px;background:rgba(175,82,222,.18);color:#af52de;vertical-align:middle;letter-spacing:.3px}
 @media (prefers-color-scheme:dark){.chip.orange{color:var(--orange)}}
 .row.sel .chip{background:rgba(255,255,255,.24);color:#fff}
 .empty-list{padding:40px 20px;text-align:center;color:var(--text2)}
@@ -156,6 +157,7 @@ h2.subject{font-size:21px;font-weight:700;letter-spacing:-.25px;margin:16px 0 6p
 .ev .bad{color:var(--red);font-size:12.5px;margin-top:4px}
 .aibox{margin:6px 18px 4px;padding:10px 12px;border-radius:10px;background:linear-gradient(135deg,rgba(175,82,222,.14),rgba(0,122,255,.12));display:flex;gap:9px;font-size:12.5px}
 .aibox svg.i{color:#af52de;margin-top:1px}
+.aibox.quiet{background:var(--fill)}.aibox.quiet svg.i{color:var(--text3)}
 .form{padding:4px 6px 4px}
 .form .vt-row{grid-template-columns:150px minmax(0,1fr) minmax(0,1fr)}
 .form .fld{display:block;min-width:0}
@@ -300,6 +302,7 @@ const INFO = {
   SPAM:['junk','red','Looks like junk','This message looks like spam or phishing. Classified only; nothing was opened or compared.']};
 const BOXES = [
   {id:'all', label:'Inbox', icon:'tray', test:()=>true},
+  {id:'ai', label:'AI-assisted', icon:'spark', test:e=>e.ai},
   {group:'Document checks'},
   {id:'review', label:'Needs review', icon:'eye', test:e=>e.status==='NEEDS_REVIEW', hot:e=>e.status==='NEEDS_REVIEW'&&!e.resolved},
   {id:'mismatch', label:'Mismatches', icon:'warn', test:e=>e.status==='MISMATCH'},
@@ -394,7 +397,7 @@ function renderList(){
       <div class="r1"><span class="nm">${esc(e.name)}</span>${e.ai?ico('spark'):''}${e.attachments?ico('clip'):''}</div>
       <div class="r2">${esc(e.subject)}</div>
       <div class="r3">${esc(e.preview)}</div>
-      <div class="chips"><span class="chip ${c}">${esc(t)}</span></div></button>`;
+      <div class="chips"><span class="chip ${c}">${esc(t)}</span>${e.ai?`<span class="chip blue">${ico('spark')} AI-assisted</span>`:''}</div></button>`;
   }).join('') : `<div class="empty-list">No messages</div>`;
 }
 $('#rows').addEventListener('click', ev=>{ const r=ev.target.closest('[data-id]'); if(r) select(r.dataset.id); });
@@ -425,8 +428,8 @@ function tableHtml(rows){
     rows.map(r=>{
       const s=show(r.si), b=show(r.bl), icon = r.status==='match'?'check':r.status==='mismatch'?'x':'warn';
       return `<div class="vt-row ${r.status}"><span class="f">${FIELD[r.field]}</span>
-        <span class="v ${s?'':'none'}"><span class="tag">SI</span>${esc(s??'—')}${quote(r.si_evidence)}</span>
-        <span class="v ${b?'':'none'}"><span class="tag">BL</span>${esc(b??'—')}${quote(r.bl_evidence)}</span>
+        <span class="v ${s?'':'none'}"><span class="tag">SI</span>${esc(s??'—')}${r.si_ai?'<span class="aitag" title="Found by Gemini (AI), not by a label pattern">AI</span>':''}${quote(r.si_evidence)}</span>
+        <span class="v ${b?'':'none'}"><span class="tag">BL</span>${esc(b??'—')}${r.bl_ai?'<span class="aitag" title="Found by Gemini (AI), not by a label pattern">AI</span>':''}${quote(r.bl_evidence)}</span>
         <span class="st ${r.status}">${ico(icon)}</span></div>`;
     }).join('') + `</div>`;
 }
@@ -455,6 +458,28 @@ function verifyCard(d){
     : banner('red','warn',`${bad.length} mismatch${bad.length>1?'es':''} found`, 'Fix these on the draft Bill of Lading before it is finalised.',
         `<div class="issues">${bad.map(r=>`<div class="issue"><b>${FIELD[r.field]}</b> — <span class="sv">SI: ${esc(show(r.si))} / BL: ${esc(show(r.bl))}</span></div>`).join('')}</div>`);
   return `<div class="card">${head}${tableHtml(rows)}${reviewedFooter(d)}</div>`;
+}
+/* shown on every email where Gemini contributed: what it did, and that it can be wrong */
+function aiDisclaimer(d){
+  if(d.ai_suggestion)                      // a scan read by Gemini: the box above the documents already carries the warning
+    return `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>${(d.ai_notes||[]).map(esc).join('<br>')}</div></div></div>`;
+  const did = (d.ai_notes||[]).map(n=>`<li>${esc(n)}</li>`).join('');
+  const found = (d.table||[]).some(r=>r.si_ai||r.bl_ai);
+  const closing = found ? `Values it found are marked <span class="aitag" style="margin:0">AI</span>. Check them against the quoted source line, or the document, before relying on them.`
+    : d.ai_suggestion ? 'Check the suggested values against the scanned page before relying on them.'
+    : 'Check it against the email before relying on it.';
+  return `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>
+    <b>AI-assisted.</b> Part of this result was produced with help from Gemini (AI), which can make mistakes.
+    ${did?`<ul style="margin:6px 0 6px 18px;padding:0">${did}</ul>`:''}
+    ${closing}
+  </div></div></div>`;
+}
+/* Gemini was asked but supplied nothing: a quiet note, not an AI tag */
+function consultedNote(d){
+  return `<div class="card"><div class="aibox quiet" style="margin:0;border-radius:0">${ico('spark')}<div>
+    <b>Gemini was consulted and found nothing.</b> It was asked about: ${d.ai_consulted.map(esc).join('; ')}.
+    Nothing here was filled in by AI, so a person needs to supply these values.
+  </div></div></div>`;
 }
 function evidenceHtml(d){
   return `<div class="sec">Source documents</div><div class="evidence">` + d.files.map(f=>{
@@ -496,7 +521,8 @@ function renderReader(){
     <div class="meta"><span class="chip ${c}">${esc(t)}</span><span class="chip">${esc(d.id)}</span>${d.ai?`<span class="chip blue">${ico('spark')} AI-assisted</span>`:''}</div>
     ${d.files.length?`<div class="files">${d.files.map(f=>`<a class="file" href="/api/attachment/${d.id}/${encodeURIComponent(f.name)}">${ico('clip')}<span>${esc(f.name)}</span><span class="ext">${esc(f.ext)}</span></a>`).join('')}</div>`:''}
     ${verifyCard(d)}
-    ${d.ai_notes && d.ai_notes.length ? `<div class="card"><div class="aibox" style="margin:0;border-radius:0">${ico('spark')}<div>${d.ai_notes.map(esc).join('<br>')}</div></div></div>`:''}
+    ${d.ai ? aiDisclaimer(d) : ''}
+    ${d.ai_consulted && d.ai_consulted.length ? consultedNote(d) : ''}
     <div class="body">${esc(d.body)}</div>`;
   el.scrollTop = 0;
 }

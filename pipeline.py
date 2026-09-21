@@ -15,11 +15,18 @@ def review(reason, detail, form=None, **extra):
             "defect_fields": [], "detail": detail, "mismatches": [], "form": form, **extra}
 
 
-def make_form(si_raw, bl_raw, si_src, bl_src, si_ev=None, bl_ev=None):
+def make_form(si_raw, bl_raw, si_src, bl_src, si_ev=None, bl_ev=None, si_ai=(), bl_ai=()):
     """What a human reviewer sees and can correct: both sides, plus where each came from."""
     blank = lambda raw: {f: (v if normalise(f, v) is not None else None) for f, v in raw.items()}  # "N/A" -> empty box
     return {"si": blank(si_raw), "bl": blank(bl_raw), "si_source": si_src, "bl_source": bl_src,
-            "si_evidence": si_ev or {}, "bl_evidence": bl_ev or {}}
+            "si_evidence": si_ev or {}, "bl_evidence": bl_ev or {},
+            "si_ai": sorted(si_ai), "bl_ai": sorted(bl_ai)}         # fields whose value the AI found
+
+
+def consulted(asked):
+    """Gemini was asked about these and could not supply a usable value: shown as a quiet note, never as an
+    AI tag, because nothing in the result came from the AI."""
+    return {"ai_consulted": asked} if asked else {}
 
 
 def evidence_for(text, doc, raw):
@@ -36,10 +43,11 @@ def evidence_for(text, doc, raw):
     return out
 
 
-def with_evidence(table, si_ev, bl_ev):
-    """Attach the source line of each value to its row of the comparison table."""
-    return [{**row, "si_evidence": si_ev.get(row["field"]), "bl_evidence": bl_ev.get(row["field"])}
-            for row in table]
+def with_evidence(table, si_ev, bl_ev, si_ai=(), bl_ai=()):
+    """Attach the source line of each value to its row of the comparison table, and mark the values
+    that the AI (not a label pattern) found."""
+    return [{**row, "si_evidence": si_ev.get(row["field"]), "bl_evidence": bl_ev.get(row["field"]),
+             "si_ai": row["field"] in si_ai, "bl_ai": row["field"] in bl_ai} for row in table]
 
 
 def suggest_from_scan(scans, docs):
@@ -96,6 +104,7 @@ def check_documents(inbox, email):
                 "defect_fields": [], "detail": "draft BL requested; nothing to compare yet",
                 "mismatches": [], "awaiting_documents": True}
     if problems:
+        failed_before = len(llm.FAILED)
         suggestion = suggest_from_scan(scans, docs) if scans else None
         si_src, bl_src = src(si_text, "SI"), src(bl_text, "BL")
         if suggestion:                              # pre-fill the scanned side with the AI reading
@@ -103,10 +112,12 @@ def check_documents(inbox, email):
                 si_raw, si_src = dict(suggestion["fields"]), "AI vision reading (unverified)"
             else:
                 bl_raw, bl_src = dict(suggestion["fields"]), "AI vision reading (unverified)"
+        asked_scan = [f"{n} (scanned page)" for n in scans] if scans and llm.enabled() and not suggestion and len(llm.FAILED) == failed_before else []
         out = review("unreadable", "; ".join(problems),
                      make_form(si_raw, bl_raw, si_src, bl_src,
                                None if si_src.startswith("AI") else evidence_for(si_text, si_name, si_raw),
                                None if bl_src.startswith("AI") else evidence_for(bl_text, bl_name, bl_raw)))
+        out.update(consulted(asked_scan))
         if suggestion:
             out.update(ai_assisted=True, ai_suggestion=suggestion,
                        ai_notes=["scan read by vision model; needs human confirmation"])
@@ -116,25 +127,33 @@ def check_documents(inbox, email):
                       make_form(si_raw, bl_raw, src(si_text, "SI"), src(bl_text, "BL"),
                                 evidence_for(None if "SI" in wrong else si_text, si_name, si_raw),
                                 evidence_for(None if "BL" in wrong else bl_text, bl_name, bl_raw)))
-    notes = []
+    notes, ai_found, asked = [], {"SI": [], "BL": []}, []
     for label, t, raw in (("SI", si_text, si_raw), ("BL", bl_text, bl_raw)):
         gaps = [f for f in FIELDS if raw[f] is None]
-        for f, v in llm.fill_missing(t, gaps).items():      # AI only fills what rules missed
+        failed_before = len(llm.FAILED)
+        got = llm.fill_missing(t, gaps)
+        for f, v in got.items():                            # AI only fills what rules missed
             raw[f] = v
+            ai_found[label].append(f)
             notes.append(f"{label} {f} found by AI: {v}")
+        left = [f for f in gaps if f not in got]
+        if left and llm.enabled() and len(llm.FAILED) == failed_before:   # asked, answered, nothing usable
+            asked.append(f"{label} {', '.join(left)}")
     mismatches, missing = compare(si_raw, bl_raw)
     si_ev, bl_ev = evidence_for(si_text, si_name, si_raw), evidence_for(bl_text, bl_name, bl_raw)
-    table = with_evidence(field_table(si_raw, bl_raw), si_ev, bl_ev)
+    table = with_evidence(field_table(si_raw, bl_raw), si_ev, bl_ev, ai_found["SI"], ai_found["BL"])
     if missing:
         return review("missing_value", "; ".join(f"{d}: {f}" for d, f in missing),
-                      make_form(si_raw, bl_raw, "read from the document", "read from the document", si_ev, bl_ev),
-                      table=table, ai_assisted=bool(notes), ai_notes=notes)
+                      make_form(si_raw, bl_raw, "read from the document", "read from the document", si_ev, bl_ev,
+                                ai_found["SI"], ai_found["BL"]),
+                      table=table, ai_assisted=bool(notes), ai_notes=notes, **consulted(asked))
     fields = [m["field"] for m in mismatches]
     return {"status": "MISMATCH" if fields else "OK", "review_reason": None,
             "has_defect": bool(fields), "defect_fields": fields,
             "detail": "No mismatch detected" if not fields else "; ".join(
                 f"{m['field']}: SI {m['si']} / BL {m['bl']}" for m in mismatches),
-            "mismatches": mismatches, "table": table, "ai_assisted": bool(notes), "ai_notes": notes}
+            "mismatches": mismatches, "table": table, "ai_assisted": bool(notes), "ai_notes": notes,
+            **consulted(asked)}
 
 
 def process_email(inbox, email):

@@ -1,3 +1,7 @@
+# Attachments are binary. Never convert their line endings: a PDF whose line endings were
+# rewritten (Git does this on Windows to files that look like text) stops opening.
 *.pdf binary
 *.docx binary
 *.xlsx binary
+*.png binary
+*.jpg binary
