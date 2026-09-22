@@ -210,9 +210,64 @@ you whether it is up to date; the test suite checks it too). Only do that on a c
 data files are intact: on Windows, Git can rewrite the line endings inside small PDFs and break
 them, which is why `.gitattributes` marks attachments as binary.
 
-## Architecture
+## Technical Architecture
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagrams, the design decisions and the known limits.
+Rules decide. AI only helps where rules cannot, and a person settles anything uncertain.
+
+Inbox (520 emails, TXT/PDF/DOCX/XLSX) → **Classify** (keyword rules; Gemini suggests a kind only when the rules are
+unsure) → **Read** (attachments become text; a scan or a broken file is never guessed at) → **Extract** (label patterns
+find the 7 fields under any wording, and each value keeps the exact source line) → **Compare** (names, ports,
+containers and weights are normalised, then compared field by field — deterministic, the AI never judges a match) →
+**Verdict**: OK / Mismatch / Needs review / Awaiting draft BL. Anything the rules cannot decide goes to a **review
+queue**: a person sees the reason and both documents, confirms or corrects the values, and the comparison is
+recomputed and saved (Undo any time).
+
+The web app runs on **Vercel** as one Python function, deployed from GitHub (push to `main` deploys; other branches
+get a private preview). **Supabase** stores reviewer decisions in one table with row-level security on. **Gemini** is
+used in four narrow ways, and we are honest about it: every one of the 520 emails is classified by rules; Gemini reads
+three scanned emails as suggestions a human confirms (we checked its 21 values by hand against the pages); it fills a
+missing value only when it quotes the exact line; and it writes a plain-language reason for all 66 mismatch and review
+cases from the compared values only. The verdict always comes from fixed rules. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagrams and the full design decisions.
+
+## Implementation Details
+
+Python 3.12 with a Flask API and a single static web page (`static/index.html`). Each value keeps its source line,
+and tests check every quote is verbatim against the named file and line number. Results for all 520 emails are
+precomputed into `results.json` with a SHA-256 fingerprint of the data and the checking code, so the app is ready in
+about a second; if the fingerprint does not match, it recomputes instead of showing stale results. The server is
+stateless (serverless instances are short-lived), so reviewer decisions live in Supabase and are read on every
+request; running locally without Supabase, a JSON file does the same job. Many failure cases are hardened, each with
+its own test: one bad email becomes a review case instead of stopping the app, a corrupt AI cache file is ignored, a
+single rejected AI request no longer switches AI off for good, a database outage leaves the inbox readable and makes
+saves fail with a clear message, posted data must be JSON and is size-capped, and the CSV export neutralises
+spreadsheet formulas.
+
+## Challenges Faced
+
+- **Gemini overload (503) and quota (429).** Back-off retries, a request cap, a cool-down and a fallback to another
+  Gemini model. Results and explanations are built offline and saved, so the live site makes no Gemini calls while
+  people browse it.
+- **Windows text-encoding bug.** Text had to be read and written as UTF-8 everywhere. Git can also rewrite line
+  endings inside small PDFs on Windows, so attachments are marked binary in `.gitattributes`.
+- **Deploying to Vercel from a repo.** A serverless host has no persistent disk, so reviewer decisions moved to
+  Supabase and results are precomputed for a fast start.
+- **Keeping the fonts identical to the original design.** A test locks the original font stack and the one Inter
+  link; nothing else may be added.
+- **Grounding the AI output.** A value found by Gemini counts only if it quotes a real line of the document; a
+  plain-language reason is kept only if it mentions the values it explains. Scan readings were checked by hand: 21 of
+  21 values matched the pages.
+
+## Future Roadmap
+
+- **In-app document viewer, next step.** The Test lab already opens a document with the differing line marked; the
+  next step is two documents side by side, with editing right where the line is marked.
+- **Provider resilience.** A second AI provider, with every scan reading re-validated against the pages, because our
+  AI evidence so far was gathered on Gemini only.
+- **Authentication and reviewer identity.** Sign-in, with every decision recorded against a named reviewer.
+- **Real user testing.** Try it with real shipping/forwarding staff and report what they find.
+- **Real-time monitoring.** Watch errors, AI failures and usage as they happen.
+- **Widen the sorting rules.** Extend the keyword rules beyond this dataset's wording for a real inbox.
 
 ## Validation lab
 
